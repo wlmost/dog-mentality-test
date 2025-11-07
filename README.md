@@ -66,34 +66,45 @@ python main.py
 ```
 
 Die Hauptanwendung bietet:
+- **Tab-basierte Oberfläche** für übersichtliche Navigation
+  - Tab 1: Stammdaten (Hund/Halter)
+  - Tab 2: Test-Durchführung (vollständige Test-Tabelle)
+  - Tab 3: Auswertung (OCEAN-Plot, Statistik)
 - **Menüleiste** mit allen Funktionen
-- **Stammdaten-Formular** für Hund/Halter
-- **Test-Tabelle** für die Durchführung
+- **Automatischer Tab-Wechsel** nach Aktionen
 - **Import/Export** von Daten
-- **OCEAN-Auswertung** (in Entwicklung)
+- **Session-Management** mit Warnung vor Datenverlust
 
 ### Workflow
 
 1. **Testbatterie importieren:**
    - Menü: Import → Testbatterie (Excel)
    - Datei auswählen: `data/Testbatterie_OCEAN.xlsx`
+   - Die Tests werden sofort im Tab "Test-Durchführung" angezeigt
 
 2. **Stammdaten eingeben:**
-   - Halter- und Hundedaten im oberen Formular eingeben
+   - Im Tab "Stammdaten": Halter- und Hundedaten eingeben
    - "Speichern" klicken
+   - **Automatischer Wechsel** zum Tab "Test-Durchführung"
 
 3. **Tests durchführen:**
-   - In der Test-Tabelle Scores (-2 bis +2) eingeben
-   - Notizen hinzufügen
+   - Im Tab "Test-Durchführung": Scores (-2 bis +2) eingeben
+   - Notizen für jeden Test hinzufügen
    - Fortschritt wird automatisch angezeigt
 
 4. **Session speichern:**
-   - Menü: Datei → Speichern
+   - Menü: Datei → Speichern (oder Strg+S)
    - JSON-Datei wird im `data/` Ordner gespeichert
 
-5. **Session laden:**
-   - Menü: Datei → Öffnen
+5. **Auswertung anzeigen:**
+   - Tab "Auswertung" wechseln
+   - Button "Statistik anzeigen" für Übersicht
+   - OCEAN-Radardiagramm (in Entwicklung)
+
+6. **Session laden:**
+   - Menü: Datei → Öffnen (oder Strg+O)
    - JSON-Datei auswählen
+   - Alle Daten werden wiederhergestellt
 
 ### Demo-Anwendungen
 

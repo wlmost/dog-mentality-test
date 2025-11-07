@@ -10,8 +10,7 @@ Integriert alle Module:
 """
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget,
-    QMenuBar, QMenu, QFileDialog, QMessageBox, QLabel, QPushButton,
-    QGroupBox, QSplitter
+    QMenuBar, QMenu, QFileDialog, QMessageBox, QLabel, QPushButton
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
@@ -53,7 +52,7 @@ class MainWindow(QMainWindow):
     
     def _setup_ui(self):
         """Erstellt das UI-Layout"""
-        # Central Widget mit Splitter
+        # Central Widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
@@ -64,29 +63,52 @@ class MainWindow(QMainWindow):
         header = self._create_header()
         layout.addWidget(header)
         
-        # Splitter für Stammdaten und Test-Tabelle
-        splitter = QSplitter(Qt.Orientation.Vertical)
+        # Tab-Widget für die drei Bereiche
+        self._tab_widget = QTabWidget()
+        self._tab_widget.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #bdc3c7;
+                background: white;
+            }
+            QTabBar::tab {
+                background: #ecf0f1;
+                border: 1px solid #bdc3c7;
+                padding: 10px 20px;
+                margin-right: 2px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QTabBar::tab:selected {
+                background: white;
+                border-bottom-color: white;
+            }
+            QTabBar::tab:hover {
+                background: #d5dbdb;
+            }
+        """)
         
-        # Stammdaten-Formular
+        # Tab 1: Stammdaten
         self._master_data_form = MasterDataForm()
-        master_group = QGroupBox("Stammdaten")
-        master_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 14px; }")
-        master_layout = QVBoxLayout(master_group)
+        master_widget = QWidget()
+        master_layout = QVBoxLayout(master_widget)
+        master_layout.setContentsMargins(20, 20, 20, 20)
         master_layout.addWidget(self._master_data_form)
-        splitter.addWidget(master_group)
+        master_layout.addStretch()
+        self._tab_widget.addTab(master_widget, "📋 Stammdaten")
         
-        # Test-Daten-Formular
+        # Tab 2: Test-Durchführung
         self._test_data_form = TestDataForm()
-        test_group = QGroupBox("Test-Durchführung")
-        test_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 14px; }")
-        test_layout = QVBoxLayout(test_group)
+        test_widget = QWidget()
+        test_layout = QVBoxLayout(test_widget)
+        test_layout.setContentsMargins(20, 20, 20, 20)
         test_layout.addWidget(self._test_data_form)
-        splitter.addWidget(test_group)
+        self._tab_widget.addTab(test_widget, "🧪 Test-Durchführung")
         
-        # Splitter-Verhältnis: 30% Stammdaten, 70% Tests
-        splitter.setSizes([300, 700])
+        # Tab 3: Auswertung
+        self._analysis_widget = self._create_analysis_tab()
+        self._tab_widget.addTab(self._analysis_widget, "📊 Auswertung")
         
-        layout.addWidget(splitter, stretch=1)
+        layout.addWidget(self._tab_widget, stretch=1)
     
     def _create_header(self) -> QWidget:
         """Erstellt den Header-Bereich"""
@@ -110,6 +132,82 @@ class MainWindow(QMainWindow):
         layout.addWidget(subtitle)
         
         return header
+    
+    def _create_analysis_tab(self) -> QWidget:
+        """Erstellt den Auswertungs-Tab"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Titel
+        title = QLabel("OCEAN Persönlichkeitsanalyse")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;")
+        layout.addWidget(title)
+        
+        # Info-Text
+        info = QLabel(
+            "Hier wird das OCEAN-Radardiagramm und die statistische Auswertung angezeigt.\n\n"
+            "Die Visualisierung wird in Modul 7 implementiert."
+        )
+        info.setStyleSheet("color: #7f8c8d; font-size: 13px; margin: 20px 0;")
+        info.setWordWrap(True)
+        layout.addWidget(info)
+        
+        # Platzhalter für Plot
+        plot_placeholder = QLabel("📊 OCEAN Radardiagramm")
+        plot_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        plot_placeholder.setStyleSheet("""
+            background-color: #ecf0f1;
+            border: 2px dashed #bdc3c7;
+            border-radius: 10px;
+            padding: 100px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #95a5a6;
+        """)
+        layout.addWidget(plot_placeholder, stretch=1)
+        
+        # Button-Leiste
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        # Statistik-Button
+        stats_btn = QPushButton("Statistik anzeigen")
+        stats_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                padding: 10px 20px;
+                border-radius: 5px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+        """)
+        stats_btn.clicked.connect(self._show_statistics)
+        button_layout.addWidget(stats_btn)
+        
+        # Plot-Button
+        plot_btn = QPushButton("Radardiagramm erstellen")
+        plot_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                padding: 10px 20px;
+                border-radius: 5px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #229954;
+            }
+        """)
+        plot_btn.clicked.connect(self._show_ocean_plot)
+        button_layout.addWidget(plot_btn)
+        
+        layout.addLayout(button_layout)
+        
+        return widget
     
     def _create_menu_bar(self):
         """Erstellt die Menüleiste"""
@@ -222,6 +320,9 @@ class MainWindow(QMainWindow):
         # Wenn Testbatterie geladen ist, Test-Session initialisieren
         if self._current_battery:
             self._test_data_form.load_data(dog_data, self._current_battery)
+            # Automatisch zum Test-Tab wechseln
+            self._tab_widget.setCurrentIndex(1)
+            self.statusBar().showMessage(f"Bereit für Tests mit {dog_data.dog_name}", 3000)
     
     def _on_test_session_saved(self, session: TestSession):
         """Callback wenn Test-Session gespeichert wurde"""
@@ -248,6 +349,9 @@ class MainWindow(QMainWindow):
         self._current_session = None
         self._current_file = None
         self._unsaved_changes = False
+        
+        # Zurück zum Stammdaten-Tab
+        self._tab_widget.setCurrentIndex(0)
         
         self.statusBar().showMessage("Neue Session erstellt", 3000)
     
@@ -404,6 +508,17 @@ class MainWindow(QMainWindow):
             dog_data = self._master_data_form.get_current_data()
             if dog_data:
                 self._test_data_form.load_data(dog_data, battery)
+                # Zum Test-Tab wechseln wenn Stammdaten vorhanden
+                self._tab_widget.setCurrentIndex(1)
+            else:
+                # Hinweis dass Stammdaten benötigt werden
+                QMessageBox.information(
+                    self,
+                    "Testbatterie geladen",
+                    f"Testbatterie '{battery.name}' wurde geladen.\n\n"
+                    "Bitte geben Sie zuerst die Stammdaten ein, um mit den Tests zu beginnen."
+                )
+                self._tab_widget.setCurrentIndex(0)  # Zum Stammdaten-Tab
         
         except Exception as e:
             QMessageBox.critical(
@@ -430,10 +545,21 @@ class MainWindow(QMainWindow):
     
     def _show_ocean_plot(self):
         """Zeigt OCEAN Radardiagramm"""
+        if not self._current_session or self._current_session.get_completed_count() == 0:
+            QMessageBox.warning(
+                self,
+                "Keine Daten",
+                "Bitte führen Sie zuerst Tests durch, um eine Auswertung zu erstellen."
+            )
+            return
+        
+        # Zum Auswertungs-Tab wechseln
+        self._tab_widget.setCurrentIndex(2)
+        
         QMessageBox.information(
             self,
             "Noch nicht implementiert",
-            "OCEAN-Radardiagramm wird in Modul 5 implementiert."
+            "OCEAN-Radardiagramm wird in Modul 7 implementiert."
         )
     
     def _show_statistics(self):

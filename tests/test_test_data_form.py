@@ -273,3 +273,77 @@ class TestTestDataFormSaving:
         with qtbot.waitSignal(form.session_saved, timeout=1000):
             # Speichern triggern (wird durch qtbot abgefangen)
             form._save_btn.click()
+
+
+def test_click_on_test_description_shows_dialog(qtbot, sample_battery, monkeypatch):
+    """Test: Klick auf Testbeschreibung öffnet Detail-Dialog"""
+    form = TestDataForm()
+    qtbot.addWidget(form)
+    form.load_battery(sample_battery)
+    
+    # Dialog-Anzeige mocken
+    dialog_shown = []
+    
+    def mock_exec(self):
+        dialog_shown.append(True)
+        return 1  # Accepted
+    
+    from src.test_detail_dialog import TestDetailDialog
+    monkeypatch.setattr(TestDetailDialog, "exec", mock_exec)
+    
+    # Auf Testbeschreibung klicken (Spalte 1, Zeile 0)
+    item = form._table.item(0, 1)
+    assert item is not None
+    
+    qtbot.mouseClick(
+        form._table.viewport(),
+        Qt.MouseButton.LeftButton,
+        pos=form._table.visualItemRect(item).center()
+    )
+    
+    # Dialog sollte geöffnet worden sein
+    assert len(dialog_shown) == 1
+
+
+def test_test_description_has_tooltip(qtbot, sample_battery):
+    """Test: Testbeschreibung hat Tooltip"""
+    form = TestDataForm()
+    qtbot.addWidget(form)
+    form.load_battery(sample_battery)
+    
+    # Erste Testbeschreibung prüfen
+    item = form._table.item(0, 1)
+    assert item is not None
+    assert item.toolTip() == "Klicken für Details zum Test"
+
+
+def test_test_description_is_clickable_styled(qtbot, sample_battery):
+    """Test: Testbeschreibung hat blaue Farbe (klickbar)"""
+    form = TestDataForm()
+    qtbot.addWidget(form)
+    form.load_battery(sample_battery)
+    
+    # Erste Testbeschreibung prüfen
+    item = form._table.item(0, 1)
+    assert item is not None
+    
+    # Blaue Farbe sollte gesetzt sein
+    from PySide6.QtGui import QColor
+    assert item.foreground().color() == QColor("#3498db")
+
+
+def test_test_object_stored_in_item(qtbot, sample_battery):
+    """Test: Test-Objekt wird in Item gespeichert"""
+    form = TestDataForm()
+    qtbot.addWidget(form)
+    form.load_battery(sample_battery)
+    
+    # Erste Testbeschreibung prüfen
+    item = form._table.item(0, 1)
+    assert item is not None
+    
+    # Test-Objekt sollte gespeichert sein
+    test = item.data(Qt.ItemDataRole.UserRole)
+    assert test is not None
+    assert test.number == 1
+    assert test.name == "Test Neugier"

@@ -13,8 +13,9 @@ from datetime import datetime
 from typing import Optional
 
 from src.models import DogData
-from src.test_battery import TestBattery
+from src.test_battery import TestBattery, Test
 from src.test_session import TestSession, TestResult
+from src.test_detail_dialog import TestDetailDialog
 
 
 class TestDataForm(QWidget):
@@ -141,6 +142,8 @@ class TestDataForm(QWidget):
         
         table.setAlternatingRowColors(True)
         # itemChanged wird nach populate_table verbunden
+        # itemClicked wird für Testbeschreibung-Details verbunden
+        table.itemClicked.connect(self._on_item_clicked)
         
         return table
     
@@ -217,9 +220,12 @@ class TestDataForm(QWidget):
             num_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self._table.setItem(row, 0, num_item)
             
-            # Beschreibung (nicht editierbar)
+            # Beschreibung (nicht editierbar, aber klickbar für Details)
             desc_item = QTableWidgetItem(test.name)
             desc_item.setFlags(desc_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            desc_item.setData(Qt.ItemDataRole.UserRole, test)  # Test-Objekt speichern
+            desc_item.setToolTip("Klicken für Details zum Test")
+            desc_item.setForeground(QColor("#3498db"))  # Blaue Farbe für Klickbarkeit
             self._table.setItem(row, 1, desc_item)
             
             # OCEAN-Dimension (nicht editierbar)
@@ -250,6 +256,17 @@ class TestDataForm(QWidget):
             notes_item = QTableWidgetItem("")
             notes_item.setData(Qt.ItemDataRole.UserRole, test.number)  # Test-Nummer speichern
             self._table.setItem(row, 4, notes_item)
+    
+    def _on_item_clicked(self, item: QTableWidgetItem):
+        """
+        Callback bei Klick auf Tabellenzelle
+        Öffnet Detail-Dialog bei Klick auf Testbeschreibung (Spalte 1)
+        """
+        if item.column() == 1:  # Testbeschreibung-Spalte
+            test = item.data(Qt.ItemDataRole.UserRole)
+            if test:
+                dialog = TestDetailDialog(test, self)
+                dialog.exec()
     
     def _on_score_changed(self):
         """Callback bei Score-Änderung"""
