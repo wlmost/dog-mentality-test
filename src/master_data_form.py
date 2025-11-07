@@ -128,13 +128,29 @@ class MasterDataForm(QWidget):
         self.dog_name_input.setMinimumHeight(30)
         layout.addRow("Name des Hundes*:", self.dog_name_input)
         
-        # Alter
-        self.age_input = QSpinBox()
-        self.age_input.setMinimum(0)
-        self.age_input.setMaximum(30)
-        self.age_input.setSuffix(" Jahre")
-        self.age_input.setMinimumHeight(30)
-        layout.addRow("Alter*:", self.age_input)
+        # Alter (Jahre und Monate)
+        age_layout = QHBoxLayout()
+        age_layout.setSpacing(10)
+        
+        self.age_years_input = QSpinBox()
+        self.age_years_input.setMinimum(0)
+        self.age_years_input.setMaximum(30)
+        self.age_years_input.setSuffix(" Jahre")
+        self.age_years_input.setMinimumHeight(30)
+        self.age_years_input.setMinimumWidth(120)
+        age_layout.addWidget(self.age_years_input)
+        
+        self.age_months_input = QSpinBox()
+        self.age_months_input.setMinimum(0)
+        self.age_months_input.setMaximum(11)
+        self.age_months_input.setSuffix(" Monate")
+        self.age_months_input.setMinimumHeight(30)
+        self.age_months_input.setMinimumWidth(120)
+        age_layout.addWidget(self.age_months_input)
+        
+        age_layout.addStretch()
+        
+        layout.addRow("Alter*:", age_layout)
         
         # Geschlecht
         self.gender_input = QComboBox()
@@ -208,7 +224,8 @@ class MasterDataForm(QWidget):
             dog_data = DogData(
                 owner_name=self.owner_name_input.text(),
                 dog_name=self.dog_name_input.text(),
-                age=self.age_input.value(),
+                age_years=self.age_years_input.value(),
+                age_months=self.age_months_input.value(),
                 gender=gender,
                 neutered=self.neutered_input.isChecked()
             )
@@ -238,7 +255,8 @@ class MasterDataForm(QWidget):
         """Setzt alle Formularfelder zurück"""
         self.owner_name_input.clear()
         self.dog_name_input.clear()
-        self.age_input.setValue(0)
+        self.age_years_input.setValue(0)
+        self.age_months_input.setValue(0)
         self.gender_input.setCurrentIndex(0)
         self.neutered_input.setChecked(False)
         self.owner_name_input.setFocus()
@@ -250,7 +268,8 @@ class MasterDataForm(QWidget):
         """
         self.owner_name_input.setText(dog_data.owner_name)
         self.dog_name_input.setText(dog_data.dog_name)
-        self.age_input.setValue(dog_data.age)
+        self.age_years_input.setValue(dog_data.age_years)
+        self.age_months_input.setValue(dog_data.age_months)
         
         if dog_data.gender == Gender.MALE:
             self.gender_input.setCurrentText("Rüde")

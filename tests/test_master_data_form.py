@@ -35,7 +35,8 @@ class TestMasterDataForm:
         """Test: Initiale Werte der Formularfelder"""
         assert form.owner_name_input.text() == ""
         assert form.dog_name_input.text() == ""
-        assert form.age_input.value() == 0
+        assert form.age_years_input.value() == 0
+        assert form.age_months_input.value() == 0
         assert form.gender_input.currentText() == "Rüde"
         assert form.neutered_input.isChecked() is False
 
@@ -45,7 +46,8 @@ class TestMasterDataForm:
         test_data = DogData(
             owner_name="Max Mustermann",
             dog_name="Bello",
-            age=5,
+            age_years=5,
+            age_months=3,
             gender=Gender.MALE,
             neutered=True
         )
@@ -56,7 +58,8 @@ class TestMasterDataForm:
         # Überprüfen
         assert form.owner_name_input.text() == "Max Mustermann"
         assert form.dog_name_input.text() == "Bello"
-        assert form.age_input.value() == 5
+        assert form.age_years_input.value() == 5
+        assert form.age_months_input.value() == 3
         assert form.gender_input.currentText() == "Rüde"
         assert form.neutered_input.isChecked() is True
 
@@ -65,7 +68,8 @@ class TestMasterDataForm:
         test_data = DogData(
             owner_name="Anna Schmidt",
             dog_name="Luna",
-            age=3,
+            age_years=0,
+            age_months=8,
             gender=Gender.FEMALE,
             neutered=False
         )
@@ -74,7 +78,8 @@ class TestMasterDataForm:
         
         assert form.owner_name_input.text() == "Anna Schmidt"
         assert form.dog_name_input.text() == "Luna"
-        assert form.age_input.value() == 3
+        assert form.age_years_input.value() == 0
+        assert form.age_months_input.value() == 8
         assert form.gender_input.currentText() == "Hündin"
         assert form.neutered_input.isChecked() is False
 
@@ -83,7 +88,8 @@ class TestMasterDataForm:
         # Felder ausfüllen
         form.owner_name_input.setText("Test Owner")
         form.dog_name_input.setText("Test Dog")
-        form.age_input.setValue(7)
+        form.age_years_input.setValue(7)
+        form.age_months_input.setValue(6)
         form.gender_input.setCurrentIndex(1)
         form.neutered_input.setChecked(True)
         
@@ -93,7 +99,8 @@ class TestMasterDataForm:
         # Überprüfen
         assert form.owner_name_input.text() == ""
         assert form.dog_name_input.text() == ""
-        assert form.age_input.value() == 0
+        assert form.age_years_input.value() == 0
+        assert form.age_months_input.value() == 0
         assert form.gender_input.currentIndex() == 0
         assert form.neutered_input.isChecked() is False
 
@@ -106,7 +113,8 @@ class TestMasterDataForm:
         # Formular ausfüllen
         form.owner_name_input.setText("Max Mustermann")
         form.dog_name_input.setText("Bello")
-        form.age_input.setValue(5)
+        form.age_years_input.setValue(5)
+        form.age_months_input.setValue(3)
         form.gender_input.setCurrentText("Rüde")
         form.neutered_input.setChecked(True)
         
@@ -118,7 +126,8 @@ class TestMasterDataForm:
         dog_data = saved_data[0]
         assert dog_data.owner_name == "Max Mustermann"
         assert dog_data.dog_name == "Bello"
-        assert dog_data.age == 5
+        assert dog_data.age_years == 5
+        assert dog_data.age_months == 3
         assert dog_data.gender == Gender.MALE
         assert dog_data.neutered is True
 
@@ -130,7 +139,8 @@ class TestMasterDataForm:
         # Nur Hundenamen eingeben
         form.owner_name_input.setText("")  # Leer!
         form.dog_name_input.setText("Bello")
-        form.age_input.setValue(5)
+        form.age_years_input.setValue(5)
+        form.age_months_input.setValue(0)
         
         # Speichern versuchen
         qtbot.mouseClick(form.save_button, Qt.MouseButton.LeftButton)
@@ -145,21 +155,41 @@ class TestMasterDataForm:
         
         form.owner_name_input.setText("Max Mustermann")
         form.dog_name_input.setText("")  # Leer!
-        form.age_input.setValue(5)
+        form.age_years_input.setValue(5)
+        form.age_months_input.setValue(0)
+        
+        qtbot.mouseClick(form.save_button, Qt.MouseButton.LeftButton)
+        
+        assert len(saved_data) == 0
+
+    def test_save_invalid_zero_age(self, form, qtbot):
+        """Test: Speichern mit Alter 0 schlägt fehl"""
+        saved_data = []
+        form.data_saved.connect(lambda data: saved_data.append(data))
+        
+        form.owner_name_input.setText("Max Mustermann")
+        form.dog_name_input.setText("Bello")
+        form.age_years_input.setValue(0)  # 0 Jahre
+        form.age_months_input.setValue(0)  # 0 Monate -> ungültig!
         
         qtbot.mouseClick(form.save_button, Qt.MouseButton.LeftButton)
         
         assert len(saved_data) == 0
 
     def test_age_spinbox_validation(self, form):
-        """Test: Alter-Eingabefeld akzeptiert nur Integer"""
+        """Test: Alter-Eingabefelder akzeptieren nur Integer"""
         # SpinBox erlaubt nur Integer
-        form.age_input.setValue(5)
-        assert form.age_input.value() == 5
+        form.age_years_input.setValue(5)
+        assert form.age_years_input.value() == 5
+        
+        form.age_months_input.setValue(8)
+        assert form.age_months_input.value() == 8
         
         # Minimum/Maximum-Grenzen
-        assert form.age_input.minimum() == 0
-        assert form.age_input.maximum() == 30
+        assert form.age_years_input.minimum() == 0
+        assert form.age_years_input.maximum() == 30
+        assert form.age_months_input.minimum() == 0
+        assert form.age_months_input.maximum() == 11
 
     def test_gender_dropdown_options(self, form):
         """Test: Geschlecht-Dropdown hat korrekte Optionen"""

@@ -1,14 +1,7 @@
 """
-Demo-Anwendung für das Stammdaten-Formular
-Zum manuellen Testen der GUI
+Startscript für die Demo-Anwendung
 """
 import sys
-from pathlib import Path
-
-# Füge das Projektverzeichnis zum Python-Pfad hinzu
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
 from PySide6.QtWidgets import QApplication
 from src.master_data_form import MasterDataForm
 from src.models import DogData
@@ -19,11 +12,11 @@ def on_data_saved(dog_data: DogData):
     print("\n" + "="*50)
     print("Daten erfolgreich gespeichert:")
     print("="*50)
-    print(f"Halter:    {dog_data.owner_name}")
-    print(f"Hund:      {dog_data.dog_name}")
-    print(f"Alter:     {dog_data.age_display()}")
+    print(f"Halter:     {dog_data.owner_name}")
+    print(f"Hund:       {dog_data.dog_name}")
+    print(f"Alter:      {dog_data.age_display()}")
     print(f"Geschlecht: {dog_data.gender.value}")
-    print(f"Kastriert: {'Ja' if dog_data.neutered else 'Nein'}")
+    print(f"Kastriert:  {'Ja' if dog_data.neutered else 'Nein'}")
     print("="*50)
     print("\nJSON-Format:")
     print(dog_data.to_dict())
@@ -36,6 +29,7 @@ def main():
     
     # Formular erstellen
     form = MasterDataForm()
+    form.setWindowTitle("Dog Mentality Test - Stammdaten")
     
     # Signal verbinden
     form.data_saved.connect(on_data_saved)
