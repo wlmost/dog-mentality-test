@@ -144,6 +144,30 @@ class TestDataForm(QWidget):
         
         return table
     
+    def load_battery(self, battery: TestBattery):
+        """
+        Lädt nur die Testbatterie (ohne Hunddaten)
+        
+        Args:
+            battery: Testbatterie
+        """
+        self._battery = battery
+        self._battery_info_label.setText(f"Testbatterie: {battery.name}")
+        
+        # Tabelle füllen
+        self._populate_table()
+        
+        # Signal nur verbinden wenn noch nicht verbunden
+        try:
+            self._table.itemChanged.disconnect(self._on_table_changed)
+        except RuntimeError:
+            pass  # War noch nicht verbunden
+        
+        self._table.itemChanged.connect(self._on_table_changed)
+        
+        # Session wird erst erstellt wenn Stammdaten vorhanden
+        self._update_progress()
+    
     def load_data(self, dog_data: DogData, battery: TestBattery):
         """
         Lädt Hunddaten und Testbatterie
@@ -165,7 +189,12 @@ class TestDataForm(QWidget):
         # Tabelle füllen
         self._populate_table()
         
-        # Jetzt Signal verbinden (nach dem Füllen)
+        # Signal nur verbinden wenn noch nicht verbunden
+        try:
+            self._table.itemChanged.disconnect(self._on_table_changed)
+        except RuntimeError:
+            pass  # War noch nicht verbunden
+        
         self._table.itemChanged.connect(self._on_table_changed)
         
         # Buttons aktivieren

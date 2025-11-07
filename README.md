@@ -57,6 +57,65 @@ Diese Anwendung unterstützt Hundeschulen bei der systematischen Erfassung und A
 
 ---
 
+## 🎯 Verwendung
+
+### Hauptanwendung starten
+
+```bash
+python main.py
+```
+
+Die Hauptanwendung bietet:
+- **Menüleiste** mit allen Funktionen
+- **Stammdaten-Formular** für Hund/Halter
+- **Test-Tabelle** für die Durchführung
+- **Import/Export** von Daten
+- **OCEAN-Auswertung** (in Entwicklung)
+
+### Workflow
+
+1. **Testbatterie importieren:**
+   - Menü: Import → Testbatterie (Excel)
+   - Datei auswählen: `data/Testbatterie_OCEAN.xlsx`
+
+2. **Stammdaten eingeben:**
+   - Halter- und Hundedaten im oberen Formular eingeben
+   - "Speichern" klicken
+
+3. **Tests durchführen:**
+   - In der Test-Tabelle Scores (-2 bis +2) eingeben
+   - Notizen hinzufügen
+   - Fortschritt wird automatisch angezeigt
+
+4. **Session speichern:**
+   - Menü: Datei → Speichern
+   - JSON-Datei wird im `data/` Ordner gespeichert
+
+5. **Session laden:**
+   - Menü: Datei → Öffnen
+   - JSON-Datei auswählen
+
+### Demo-Anwendungen
+
+```bash
+# Stammdaten-Demo
+python run_demo.py
+
+# Test-Tabellen-Demo
+python run_test_data_demo.py
+
+# Excel-Import-Demo
+python -m src.demo_excel_import
+```
+     ```
+
+4. **Abhängigkeiten installieren:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+---
+
 ## 🧪 Tests ausführen
 
 ```bash

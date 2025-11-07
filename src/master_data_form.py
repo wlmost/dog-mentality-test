@@ -2,6 +2,7 @@
 GUI-Formular für die Stammdaten-Erfassung
 Modernes, benutzerfreundliches Design nach UX-Best-Practices
 """
+from typing import Optional
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLineEdit, QSpinBox, QComboBox, QCheckBox,
@@ -277,3 +278,31 @@ class MasterDataForm(QWidget):
             self.gender_input.setCurrentText("Hündin")
             
         self.neutered_input.setChecked(dog_data.neutered)
+    
+    def get_current_data(self) -> Optional[DogData]:
+        """
+        Gibt die aktuellen Formulardaten zurück (ohne Validierung zu triggern)
+        
+        Returns:
+            DogData wenn Formular ausgefüllt, sonst None
+        """
+        # Prüfe ob Pflichtfelder ausgefüllt sind
+        if not self.owner_name_input.text().strip() or not self.dog_name_input.text().strip():
+            return None
+        
+        if self.age_years_input.value() == 0 and self.age_months_input.value() == 0:
+            return None
+        
+        try:
+            gender = Gender.MALE if self.gender_input.currentText() == "Rüde" else Gender.FEMALE
+            
+            return DogData(
+                owner_name=self.owner_name_input.text().strip(),
+                dog_name=self.dog_name_input.text().strip(),
+                age_years=self.age_years_input.value(),
+                age_months=self.age_months_input.value(),
+                gender=gender,
+                neutered=self.neutered_input.isChecked()
+            )
+        except Exception:
+            return None

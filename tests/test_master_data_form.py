@@ -147,6 +147,36 @@ class TestMasterDataForm:
         
         # Kein Signal ausgelöst
         assert len(saved_data) == 0
+    
+    def test_get_current_data_valid(self, form, qtbot):
+        """Test: get_current_data gibt DogData zurück wenn ausgefüllt"""
+        form.owner_name_input.setText("Max Mustermann")
+        form.dog_name_input.setText("Bello")
+        form.age_years_input.setValue(5)
+        form.age_months_input.setValue(3)
+        form.gender_input.setCurrentText("Rüde")
+        form.neutered_input.setChecked(True)
+        
+        data = form.get_current_data()
+        
+        assert data is not None
+        assert data.owner_name == "Max Mustermann"
+        assert data.dog_name == "Bello"
+        assert data.age_years == 5
+        assert data.age_months == 3
+    
+    def test_get_current_data_empty(self, form, qtbot):
+        """Test: get_current_data gibt None bei leerem Formular"""
+        data = form.get_current_data()
+        assert data is None
+    
+    def test_get_current_data_incomplete(self, form, qtbot):
+        """Test: get_current_data gibt None bei unvollständigen Daten"""
+        form.owner_name_input.setText("Max")
+        # Kein Hundename
+        
+        data = form.get_current_data()
+        assert data is None
 
     def test_save_invalid_empty_dog_name(self, form, qtbot):
         """Test: Speichern mit leerem Hundenamen schlägt fehl"""
