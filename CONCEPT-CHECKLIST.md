@@ -27,7 +27,7 @@
 ---
 
 ### 2. Modul 1: Stammdaten-Erfassung (GUI + Tests)
-**Status:** ⬜ Offen  
+**Status:** ✅ Abgeschlossen  
 **Beschreibung:**
 - PySide6-Formular für Halter/Hund-Daten mit modernem UX-Design
 - Validierung (Alter nur Integer)
@@ -38,6 +38,24 @@
 - Name des Hundes
 - Alter (nur Integer)
 - Geschlecht (Drop-down: Rüde, Hündin)
+- Kastriert (Checkbox)
+
+**Umgesetzt:**
+- ✅ Datenmodell `DogData` mit Validierung (models.py)
+- ✅ Enum für Geschlecht (`Gender.MALE`, `Gender.FEMALE`)
+- ✅ PySide6-Formular mit modernem UX-Design
+  - Visuelle Hierarchie (Titel, Gruppen, Whitespace)
+  - Placeholder-Texte, Suffixe
+  - Farbschema (Grün für Primäraktion)
+  - Responsive Sizing
+- ✅ Validierung im Datenmodell (`__post_init__`)
+- ✅ Signal `data_saved` für Integration
+- ✅ JSON-Serialisierung (to_dict, from_dict)
+- ✅ 18 automatisierte Tests (alle bestanden)
+  - 7 Model-Tests
+  - 11 GUI-Tests (inkl. automatisches Ausfüllen)
+- ✅ Demo-Anwendung (`demo_master_data.py`)
+- ✅ Vollständige Dokumentation (docs/modul_1_stammdaten.md)
 - Kastriert (Checkbox)
 
 ---
