@@ -88,19 +88,39 @@
 ---
 
 ### 4. Modul 3: Testdaten-Eingabe GUI & Persistierung
-**Status:** ⬜ Offen  
+**Status:** ✅ Abgeschlossen  
 **Beschreibung:**
 - Tabellenbasierte GUI zur Werteingabe pro Test
 - JSON-Speicherung (optional SQLite)
 - Datenvalidierung und automatisierte GUI-Tests
 
+**Umgesetzt:**
+- ✅ Datenmodelle `TestResult` und `TestSession` (test_session.py)
+- ✅ GUI `TestDataForm` mit Tabelle für Scores (-2 bis +2)
+- ✅ JSON-Persistierung (save_to_file, load_from_file)
+- ✅ Fortschrittsanzeige, Session-Notizen
+- ✅ 25 automatisierte Tests (alle bestanden)
+- ✅ Test-Detail-Dialog beim Klick auf Testbeschreibung (14 Tests)
+
 ---
 
 ### 5. Modul 4: Export-Funktionalität
-**Status:** ⬜ Offen  
+**Status:** ✅ Abgeschlossen  
 **Beschreibung:**
-- CSV/Excel-Export aller erfassten Daten (Stammdaten + Testwerte)
+- Excel/PDF-Export aller erfassten Daten (Stammdaten + Testwerte)
 - Benutzerfreundlicher Datei-Dialog
+
+**Umgesetzt:**
+- ✅ `ExcelExporter` mit openpyxl
+  - 2 Sheets: Stammdaten und Testergebnisse
+  - Formatierung: Header fett, Auto-Spaltenbreite
+  - 11 automatisierte Tests (alle bestanden)
+- ✅ `PdfExporter` mit reportlab
+  - Professioneller Report-Layout
+  - Stammdaten-Tabelle, Testergebnisse, Session-Notizen
+  - 13 automatisierte Tests (alle bestanden)
+- ✅ Integration in MainWindow (FileDialog, Fehlerbehandlung)
+- ✅ **24 neue Tests** (11 Excel + 13 PDF)
 
 ---
 
@@ -109,7 +129,7 @@
 **Beschreibung:**
 - Mapping Bewertungsskalen → OCEAN-Faktoren
 - Aggregationslogik
-- Radar-Diagramm mit PyChart
+- Radar-Diagramm mit matplotlib
 - Integration in GUI
 
 **OCEAN-Faktoren:**

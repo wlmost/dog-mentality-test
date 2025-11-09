@@ -16,6 +16,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
 from pathlib import Path
 from typing import Optional
+from datetime import datetime
 import json
 
 from src.master_data_form import MasterDataForm
@@ -23,6 +24,8 @@ from src.test_data_form import TestDataForm
 from src.test_battery import TestBattery
 from src.test_session import TestSession
 from src.excel_importer import TestBatteryImporter
+from src.excel_exporter import ExcelExporter, ExcelExportError
+from src.pdf_exporter import PdfExporter, PdfExportError
 from src.models import DogData
 
 
@@ -529,19 +532,87 @@ class MainWindow(QMainWindow):
     
     def _export_to_excel(self):
         """Exportiert Ergebnisse als Excel"""
-        QMessageBox.information(
+        if not self._current_session:
+            QMessageBox.warning(
+                self,
+                "Keine Daten",
+                "Bitte erst eine Session erstellen oder laden."
+            )
+            return
+        
+        # FileDialog für Speicherort
+        default_name = f"export_{self._current_session.dog_data.dog_name}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        filepath, _ = QFileDialog.getSaveFileName(
             self,
-            "Noch nicht implementiert",
-            "Excel-Export wird in Modul 4 implementiert."
+            "Excel exportieren",
+            str(Path.home() / "Documents" / default_name),
+            "Excel-Dateien (*.xlsx)"
         )
+        
+        if not filepath:
+            return
+        
+        try:
+            # Export durchführen
+            exporter = ExcelExporter(battery=self._current_battery)
+            exporter.export_to_excel(self._current_session, filepath)
+            
+            QMessageBox.information(
+                self,
+                "Export erfolgreich",
+                f"Session erfolgreich exportiert:\n{filepath}"
+            )
+            
+            self.statusBar().showMessage(f"Excel-Export: {filepath}", 5000)
+            
+        except ExcelExportError as e:
+            QMessageBox.critical(
+                self,
+                "Export-Fehler",
+                f"Fehler beim Excel-Export:\n{str(e)}"
+            )
     
     def _export_to_pdf(self):
         """Exportiert Ergebnisse als PDF"""
-        QMessageBox.information(
+        if not self._current_session:
+            QMessageBox.warning(
+                self,
+                "Keine Daten",
+                "Bitte erst eine Session erstellen oder laden."
+            )
+            return
+        
+        # FileDialog für Speicherort
+        default_name = f"report_{self._current_session.dog_data.dog_name}_{datetime.now().strftime('%Y%m%d')}.pdf"
+        filepath, _ = QFileDialog.getSaveFileName(
             self,
-            "Noch nicht implementiert",
-            "PDF-Export wird in Modul 4 implementiert."
+            "PDF exportieren",
+            str(Path.home() / "Documents" / default_name),
+            "PDF-Dateien (*.pdf)"
         )
+        
+        if not filepath:
+            return
+        
+        try:
+            # Export durchführen
+            exporter = PdfExporter(battery=self._current_battery)
+            exporter.export_to_pdf(self._current_session, filepath)
+            
+            QMessageBox.information(
+                self,
+                "Export erfolgreich",
+                f"PDF-Report erfolgreich erstellt:\n{filepath}"
+            )
+            
+            self.statusBar().showMessage(f"PDF-Export: {filepath}", 5000)
+            
+        except PdfExportError as e:
+            QMessageBox.critical(
+                self,
+                "Export-Fehler",
+                f"Fehler beim PDF-Export:\n{str(e)}"
+            )
     
     def _show_ocean_plot(self):
         """Zeigt OCEAN Radardiagramm"""

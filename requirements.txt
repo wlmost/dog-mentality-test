@@ -5,6 +5,9 @@ PySide6>=6.6.0
 openpyxl>=3.1.2
 pandas>=2.1.0
 
+# PDF Export
+reportlab>=4.0.0
+
 # Visualisierung
 matplotlib>=3.8.0
 

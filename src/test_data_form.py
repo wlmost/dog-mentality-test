@@ -291,17 +291,17 @@ class TestDataForm(QWidget):
             score = score_widget.value()
             notes = notes_item.text() if notes_item else ""
             
-            # Nur speichern wenn Score != 0 (Standard)
-            if score != 0 or notes:
-                result = TestResult(test_number=test_num, score=score, notes=notes)
-                self._session.add_result(result)
+            # Immer speichern - Score 0 ist ein valider Wert (neutrales Verhalten)
+            result = TestResult(test_number=test_num, score=score, notes=notes)
+            self._session.add_result(result)
     
     def _update_progress(self):
         """Aktualisiert die Fortschrittsanzeige"""
         if not self._session or not self._battery:
             return
         
-        completed = self._session.get_completed_count()
+        # Zähle nur Tests mit Score != 0 als "bearbeitet"
+        completed = sum(1 for result in self._session.results.values() if result.score != 0)
         total = len(self._battery.tests)
         self._progress_label.setText(f"Fortschritt: {completed} / {total} Tests")
     
