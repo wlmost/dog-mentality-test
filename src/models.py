@@ -20,6 +20,8 @@ class DogData:
     age_months: int
     gender: Gender
     neutered: bool
+    breed: str = ""
+    intended_use: str = ""
 
     def __post_init__(self):
         """Validierung der Eingabedaten"""
@@ -57,10 +59,12 @@ class DogData:
         return {
             "owner_name": self.owner_name,
             "dog_name": self.dog_name,
+            "breed": self.breed,
             "age_years": self.age_years,
             "age_months": self.age_months,
             "gender": self.gender.value,
-            "neutered": self.neutered
+            "neutered": self.neutered,
+            "intended_use": self.intended_use
         }
 
     @classmethod
@@ -70,8 +74,10 @@ class DogData:
         return cls(
             owner_name=data["owner_name"],
             dog_name=data["dog_name"],
+            breed=data.get("breed", ""),  # Rückwärtskompatibilität
             age_years=data.get("age_years", data.get("age", 0)),  # Rückwärtskompatibilität
             age_months=data.get("age_months", 0),
             gender=gender,
-            neutered=data["neutered"]
+            neutered=data["neutered"],
+            intended_use=data.get("intended_use", "")  # Rückwärtskompatibilität
         )

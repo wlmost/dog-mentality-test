@@ -105,9 +105,11 @@ class ExcelExporter:
             ("Datum", date_str),
             ("Name des Halters", session.dog_data.owner_name),
             ("Name des Hundes", session.dog_data.dog_name),
+            ("Rasse", session.dog_data.breed if session.dog_data.breed else "-"),
             ("Alter", session.dog_data.age_display()),
             ("Geschlecht", session.dog_data.gender.value),
             ("Kastriert", "Ja" if session.dog_data.neutered else "Nein"),
+            ("Zukünftiges Einsatzgebiet", session.dog_data.intended_use if session.dog_data.intended_use else "-"),
             ("Testbatterie", session.battery_name),
         ]
         

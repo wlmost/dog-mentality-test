@@ -129,6 +129,12 @@ class MasterDataForm(QWidget):
         self.dog_name_input.setMinimumHeight(30)
         layout.addRow("Name des Hundes*:", self.dog_name_input)
         
+        # Rasse
+        self.breed_input = QLineEdit()
+        self.breed_input.setPlaceholderText("z.B. Deutscher Schäferhund, Labrador...")
+        self.breed_input.setMinimumHeight(30)
+        layout.addRow("Rasse:", self.breed_input)
+        
         # Alter (Jahre und Monate)
         age_layout = QHBoxLayout()
         age_layout.setSpacing(10)
@@ -162,6 +168,12 @@ class MasterDataForm(QWidget):
         # Kastriert
         self.neutered_input = QCheckBox("Ja, kastriert/sterilisiert")
         layout.addRow("Kastriert:", self.neutered_input)
+        
+        # Zukünftiges Einsatzgebiet
+        self.intended_use_input = QLineEdit()
+        self.intended_use_input.setPlaceholderText("z.B. Familienhund, Therapiehund, Schutzhund...")
+        self.intended_use_input.setMinimumHeight(30)
+        layout.addRow("Zukünftiges Einsatzgebiet:", self.intended_use_input)
         
         group.setLayout(layout)
         return group
@@ -228,7 +240,9 @@ class MasterDataForm(QWidget):
                 age_years=self.age_years_input.value(),
                 age_months=self.age_months_input.value(),
                 gender=gender,
-                neutered=self.neutered_input.isChecked()
+                neutered=self.neutered_input.isChecked(),
+                breed=self.breed_input.text().strip(),
+                intended_use=self.intended_use_input.text().strip()
             )
             
             # Signal aussenden
@@ -256,10 +270,12 @@ class MasterDataForm(QWidget):
         """Setzt alle Formularfelder zurück"""
         self.owner_name_input.clear()
         self.dog_name_input.clear()
+        self.breed_input.clear()
         self.age_years_input.setValue(0)
         self.age_months_input.setValue(0)
         self.gender_input.setCurrentIndex(0)
         self.neutered_input.setChecked(False)
+        self.intended_use_input.clear()
         self.owner_name_input.setFocus()
         
     def fill_form(self, dog_data: DogData):
@@ -269,6 +285,7 @@ class MasterDataForm(QWidget):
         """
         self.owner_name_input.setText(dog_data.owner_name)
         self.dog_name_input.setText(dog_data.dog_name)
+        self.breed_input.setText(dog_data.breed)
         self.age_years_input.setValue(dog_data.age_years)
         self.age_months_input.setValue(dog_data.age_months)
         
@@ -278,6 +295,7 @@ class MasterDataForm(QWidget):
             self.gender_input.setCurrentText("Hündin")
             
         self.neutered_input.setChecked(dog_data.neutered)
+        self.intended_use_input.setText(dog_data.intended_use)
     
     def get_current_data(self) -> Optional[DogData]:
         """
@@ -302,7 +320,9 @@ class MasterDataForm(QWidget):
                 age_years=self.age_years_input.value(),
                 age_months=self.age_months_input.value(),
                 gender=gender,
-                neutered=self.neutered_input.isChecked()
+                neutered=self.neutered_input.isChecked(),
+                breed=self.breed_input.text().strip(),
+                intended_use=self.intended_use_input.text().strip()
             )
         except Exception:
             return None

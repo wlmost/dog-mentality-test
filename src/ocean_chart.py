@@ -109,6 +109,19 @@ class OceanRadarChart(QWidget):
             hovertemplate='<b>%{theta}</b><br>Summenwert: %{r}<extra></extra>',
         ))
         
+        # Bestimme Achsen-Range basierend auf Anzahl Tests pro Dimension
+        # Jeder Test kann -2 bis +2 Punkte geben
+        # Daher: Range = test_count * 2
+        test_counts = [
+            self.scores.openness_count,
+            self.scores.conscientiousness_count,
+            self.scores.extraversion_count,
+            self.scores.agreeableness_count,
+            self.scores.neuroticism_count,
+        ]
+        max_test_count = max(test_counts) if test_counts else 1
+        axis_range = max_test_count * 2  # z.B. 7 Tests -> ±14
+        
         # Layout konfigurieren - GRÖßERES Chart
         fig.update_layout(
             polar=dict(
@@ -118,6 +131,7 @@ class OceanRadarChart(QWidget):
                     showline=True,
                     gridcolor='lightgray',
                     tickfont=dict(size=14),
+                    range=[-axis_range, axis_range],  # Symmetrisch um 0, basierend auf Testanzahl
                 ),
                 angularaxis=dict(
                     tickfont=dict(size=16, color='black'),
