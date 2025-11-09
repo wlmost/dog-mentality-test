@@ -8,8 +8,7 @@ pandas>=2.1.0
 # PDF Export
 reportlab>=4.0.0
 
-# Visualisierung
-matplotlib>=3.8.0
+# Visualisierung (QtCharts ist in PySide6 enthalten)
 
 # Testing
 pytest>=7.4.0
