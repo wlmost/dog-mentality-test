@@ -1,38 +1,43 @@
 """
 OCEAN Radar Chart: Visualisierung der OCEAN-Dimensionen
 
-Erstellt ein Radardiagramm (Polar Chart) mit den 5 OCEAN-Dimensionen
-unter Verwendung von PySide6.QtCharts.
+Erstellt ein interaktives Radardiagramm mit den 5 OCEAN-Dimensionen
+unter Verwendung von Plotly.
+
+HINWEIS: QPolarChart von PySide6.QtCharts führt zu Crashes in Version 6.10.0,
+daher verwenden wir Plotly für stabile, interaktive und ansprechende Visualisierung.
 
 Funktionsweise:
-1. QPolarChart mit 5 Achsen (eine pro OCEAN-Dimension)
-2. QAreaSeries für gefüllten Radar-Plot
-3. QValueAxis für jeden Dimension-Wert
-4. Automatische Skalierung basierend auf Max/Min-Werten
+1. Plotly Scatterpolar für Radar-Chart
+2. HTML-Rendering in QWebEngineView
+3. Interaktive Features: Zoom, Pan, Hover
+4. Automatische Skalierung
 
 Design-Entscheidungen:
 - Verwendung von Summenwerten (nicht Durchschnitt)
 - Dynamische Achsen-Skalierung
 - Blaue Farbe (#3498db) mit Transparenz
-- Interaktive Labels mit Hover-Effekt
+- Geschlossene Radar-Form
 """
-from PySide6.QtCharts import QChart, QChartView, QPolarChart, QValueAxis, QLineSeries, QAreaSeries
-from PySide6.QtCore import Qt, QPointF
-from PySide6.QtGui import QPainter, QPen, QBrush, QColor
-from PySide6.QtWidgets import QWidget
+import plotly.graph_objects as go
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWidgets import QWidget, QVBoxLayout
 from src.ocean_analyzer import OceanScores
 
 
 class OceanRadarChart(QWidget):
     """
-    Widget zur Darstellung eines OCEAN-Radardiagramms
+    Widget zur Darstellung eines OCEAN-Radardiagramms mit Plotly
     
-    Zeigt die 5 OCEAN-Dimensionen in einem Polar-Chart:
+    Zeigt die 5 OCEAN-Dimensionen als interaktives Radar-Chart:
     - Openness (O)
     - Conscientiousness (C)
     - Extraversion (E)
     - Agreeableness (A)
     - Neuroticism (N)
+    
+    Verwendet Plotly für moderne, interaktive Visualisierung.
     
     Beispiel:
         scores = OceanScores(
@@ -55,31 +60,25 @@ class OceanRadarChart(QWidget):
         super().__init__(parent)
         self.scores = scores
         
-        # Chart erstellen
-        self._chart = self._create_chart()
+        # WebEngineView für Plotly-HTML erstellen
+        self._web_view = QWebEngineView(self)
         
-        # ChartView erstellen
-        self._chart_view = QChartView(self._chart, self)
-        self._chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
+        # Für Kompatibilität mit Tests: _chart als Referenz
+        self._chart = None  # Plotly verwendet kein QChart-Objekt
         
-        # Layout (ChartView füllt gesamtes Widget)
-        from PySide6.QtWidgets import QVBoxLayout
+        # Layout
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self._chart_view)
+        layout.addWidget(self._web_view)
+        
+        # Chart erstellen und anzeigen
+        self._update_chart()
     
-    def _create_chart(self) -> QChart:
+    def _update_chart(self):
         """
-        Erstellt das Polar-Chart mit OCEAN-Daten
-        
-        Returns:
-            Konfiguriertes QChart-Objekt
+        Erstellt und aktualisiert das Plotly Radar-Chart
         """
-        chart = QPolarChart()
-        chart.setTitle("OCEAN-Persönlichkeitsprofil")
-        chart.setAnimationOptions(QChart.AnimationOption.AllAnimations)
-        
-        # Daten als Liste (O, C, E, A, N)
+        # Daten für Radar-Chart
         dimension_values = [
             self.scores.openness,
             self.scores.conscientiousness,
@@ -89,74 +88,90 @@ class OceanRadarChart(QWidget):
         ]
         
         dimension_labels = [
-            "Openness",
-            "Conscientiousness",
-            "Extraversion",
-            "Agreeableness",
-            "Neuroticism",
+            "Offenheit (O)",
+            "Gewissenhaftigkeit (C)",
+            "Extraversion (E)",
+            "Verträglichkeit (A)",
+            "Neurotizismus (N)",
         ]
         
-        # Achsen-Range dynamisch berechnen
-        min_val = min(dimension_values)
-        max_val = max(dimension_values)
+        # Plotly Scatterpolar (Radar) Chart erstellen
+        fig = go.Figure()
         
-        # Etwas Padding hinzufügen
-        axis_min = min_val - 1 if min_val < 0 else 0
-        axis_max = max_val + 1
+        fig.add_trace(go.Scatterpolar(
+            r=dimension_values,
+            theta=dimension_labels,
+            fill='toself',
+            fillcolor='rgba(52, 152, 219, 0.3)',  # Blau mit Transparenz
+            line=dict(color='rgb(52, 152, 219)', width=3),  # Dickere Linie
+            name='OCEAN-Profil',
+            marker=dict(size=8, color='rgb(52, 152, 219)'),  # Größere Punkte
+            hovertemplate='<b>%{theta}</b><br>Summenwert: %{r}<extra></extra>',
+        ))
         
-        # Winkelachse (Kategorien)
-        angular_axis = QValueAxis()
-        angular_axis.setTickCount(len(dimension_labels) + 1)
-        angular_axis.setRange(0, len(dimension_labels))
-        angular_axis.setLabelsVisible(True)
+        # Layout konfigurieren - GRÖßERES Chart
+        fig.update_layout(
+            polar=dict(
+                radialaxis=dict(
+                    visible=True,
+                    showticklabels=True,
+                    showline=True,
+                    gridcolor='lightgray',
+                    tickfont=dict(size=14),
+                ),
+                angularaxis=dict(
+                    tickfont=dict(size=16, color='black'),
+                )
+            ),
+            showlegend=True,
+            legend=dict(
+                font=dict(size=14),
+                orientation='h',
+                yanchor='bottom',
+                y=-0.15,
+                xanchor='center',
+                x=0.5
+            ),
+            title=dict(
+                text="OCEAN-Persönlichkeitsprofil",
+                font=dict(size=24, color='black'),
+                x=0.5,
+                xanchor='center',
+                y=0.95
+            ),
+            font=dict(size=14),
+            paper_bgcolor='white',
+            plot_bgcolor='white',
+            # Größere Margins für bessere Lesbarkeit
+            margin=dict(l=120, r=120, t=120, b=100),
+            # Feste Höhe für konsistente Darstellung
+            height=700,
+            # Responsive auf verschiedene Bildschirmgrößen
+            autosize=True,
+        )
         
-        # Radiale Achse (Werte)
-        radial_axis = QValueAxis()
-        radial_axis.setRange(axis_min, axis_max)
-        radial_axis.setTickCount(5)
-        radial_axis.setLabelsVisible(True)
+        # HTML generieren mit deutscher Konfiguration
+        config = {
+            'displayModeBar': True,
+            'displaylogo': False,
+            'modeBarButtonsToRemove': ['select2d', 'lasso2d'],
+            'toImageButtonOptions': {
+                'format': 'png',
+                'filename': 'ocean_profil',
+                'height': 700,
+                'width': 700,
+                'scale': 2
+            },
+            'locale': 'de'  # Deutsche Sprache für Toolbar
+        }
         
-        # LineSeries für Radar erstellen
-        series = QLineSeries()
-        series.setName("OCEAN-Werte")
-        
-        # Punkte hinzufügen (Winkel, Radius)
-        for i, value in enumerate(dimension_values):
-            series.append(QPointF(i, value))
-        
-        # Ersten Punkt nochmal anhängen für geschlossene Form
-        series.append(QPointF(0, dimension_values[0]))
-        
-        # AreaSeries für gefüllten Bereich
-        area_series = QAreaSeries(series)
-        area_series.setName("OCEAN-Profil")
-        
-        # Farbe: Blau mit Transparenz
-        color = QColor("#3498db")
-        color.setAlpha(100)
-        
-        pen = QPen(QColor("#3498db"))
-        pen.setWidth(2)
-        
-        area_series.setPen(pen)
-        area_series.setBrush(QBrush(color))
-        area_series.setOpacity(0.7)
-        
-        # Series zum Chart hinzufügen
-        chart.addSeries(area_series)
-        
-        # Achsen zuweisen
-        chart.addAxis(angular_axis, QPolarChart.PolarOrientation.PolarOrientationAngular)
-        chart.addAxis(radial_axis, QPolarChart.PolarOrientation.PolarOrientationRadial)
-        
-        area_series.attachAxis(angular_axis)
-        area_series.attachAxis(radial_axis)
-        
-        # Legende
-        chart.legend().setVisible(True)
-        chart.legend().setAlignment(Qt.AlignmentFlag.AlignBottom)
-        
-        return chart
+        # HTML mit deutscher Lokalisierung
+        html = fig.to_html(
+            include_plotlyjs='cdn', 
+            config=config,
+            include_mathjax=False
+        )
+        self._web_view.setHtml(html)
     
     def update_scores(self, scores: OceanScores):
         """
@@ -166,8 +181,4 @@ class OceanRadarChart(QWidget):
             scores: Neue OceanScores
         """
         self.scores = scores
-        
-        # Chart neu erstellen
-        new_chart = self._create_chart()
-        self._chart_view.setChart(new_chart)
-        self._chart = new_chart
+        self._update_chart()

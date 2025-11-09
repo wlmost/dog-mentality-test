@@ -227,8 +227,8 @@ class MainWindow(QMainWindow):
         
         # Info-Text
         info = QLabel(
-            "Hier wird das OCEAN-Radardiagramm und die statistische Auswertung angezeigt.\n\n"
-            "Die Visualisierung wird in Modul 7 implementiert."
+            "Hier wird das OCEAN-Radardiagramm angezeigt.\n\n"
+            "Klicken Sie auf den Button 'Radardiagramm erstellen' um die Visualisierung zu erstellen."
         )
         info.setStyleSheet("color: #7f8c8d; font-size: 13px; margin: 20px 0;")
         info.setWordWrap(True)
@@ -247,13 +247,20 @@ class MainWindow(QMainWindow):
             color: #95a5a6;
         """)
         
-        # Container für Chart (wird später ersetzt)
+        # Container für Chart mit ScrollArea für große Diagramme
         self._chart_container = QWidget()
         chart_layout = QVBoxLayout(self._chart_container)
         chart_layout.setContentsMargins(0, 0, 0, 0)
         chart_layout.addWidget(self._plot_placeholder)
         
-        layout.addWidget(self._chart_container, stretch=1)
+        # ScrollArea für Chart (damit große Diagramme scrollbar sind)
+        scroll_area = QScrollArea()
+        scroll_area.setWidget(self._chart_container)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        layout.addWidget(scroll_area, stretch=1)
         
         # Button-Leiste
         button_layout = QHBoxLayout()
@@ -723,43 +730,57 @@ class MainWindow(QMainWindow):
             analyzer = OceanAnalyzer(self._current_session, self._current_battery)
             scores = analyzer.calculate_ocean_scores()
             
-            # Radardiagramm erstellen
-            chart_widget = OceanRadarChart(scores)
-            
             # Altes Widget aus Container entfernen und löschen
             layout = self._chart_container.layout()
+            
             if layout:
-                for i in reversed(range(layout.count())):
-                    item = layout.itemAt(i)
+                # Alle Widgets aus Layout entfernen
+                while layout.count():
+                    item = layout.takeAt(0)
                     if item:
                         widget = item.widget()
                         if widget:
-                            widget.setParent(None)
                             widget.deleteLater()
+            else:
+                # Fallback: Layout neu erstellen falls nicht vorhanden
+                from PySide6.QtWidgets import QVBoxLayout
+                layout = QVBoxLayout(self._chart_container)
+                layout.setContentsMargins(0, 0, 0, 0)
             
-            # Neues Chart hinzufügen
-            layout.addWidget(chart_widget)
-            
-            # Zum Auswertungs-Tab wechseln (erst nach erfolgreicher Erstellung)
+            # ERST zum Tab wechseln, DANN Chart erstellen!
+            # Vermeidet Rendering-Probleme wenn Tab nicht sichtbar ist
             self._tab_widget.setCurrentIndex(2)
             
-            # Erfolgsmeldung
-            QMessageBox.information(
-                self,
-                "OCEAN-Analyse",
-                f"OCEAN-Radardiagramm wurde erstellt!\n\n"
-                f"Anzahl ausgewerteter Tests:\n"
-                f"  Openness: {scores.openness_count}\n"
-                f"  Conscientiousness: {scores.conscientiousness_count}\n"
-                f"  Extraversion: {scores.extraversion_count}\n"
-                f"  Agreeableness: {scores.agreeableness_count}\n"
-                f"  Neuroticism: {scores.neuroticism_count}"
+            # Event-Loop verarbeiten lassen
+            from PySide6.QtCore import QCoreApplication
+            QCoreApplication.processEvents()
+            
+            # Radardiagramm erstellen - NACH Tab-Wechsel!
+            chart_widget = OceanRadarChart(scores, parent=self._chart_container)
+            
+            # Chart zum Layout hinzufügen
+            layout.addWidget(chart_widget)
+            
+            # Event-Loop verarbeiten lassen, damit Chart gerendert wird
+            QCoreApplication.processEvents()
+            
+            # Statusmeldung
+            status_msg = (
+                f"OCEAN-Analyse erstellt: "
+                f"O={scores.openness_count}, "
+                f"C={scores.conscientiousness_count}, "
+                f"E={scores.extraversion_count}, "
+                f"A={scores.agreeableness_count}, "
+                f"N={scores.neuroticism_count} Tests"
             )
+            self.statusBar().showMessage(status_msg, 5000)
         except Exception as e:
+            import traceback
+            error_msg = f"Fehler beim Erstellen des Radardiagramms:\n\n{str(e)}\n\n{traceback.format_exc()}"
             QMessageBox.critical(
                 self,
                 "Fehler",
-                f"Fehler beim Erstellen des Radardiagramms:\n{str(e)}"
+                error_msg
             )
     
     def _show_statistics(self):

@@ -28,6 +28,7 @@ class TestDataForm(QWidget):
         self._dog_data: Optional[DogData] = None
         self._battery: Optional[TestBattery] = None
         self._session: Optional[TestSession] = None
+        self._signal_connected = False  # Track ob Signal verbunden ist
         self._setup_ui()
     
     def _setup_ui(self):
@@ -169,12 +170,9 @@ class TestDataForm(QWidget):
         self._populate_table()
         
         # Signal nur verbinden wenn noch nicht verbunden
-        try:
-            self._table.itemChanged.disconnect(self._on_table_changed)
-        except RuntimeError:
-            pass  # War noch nicht verbunden
-        
-        self._table.itemChanged.connect(self._on_table_changed)
+        if not self._signal_connected:
+            self._table.itemChanged.connect(self._on_table_changed)
+            self._signal_connected = True
         
         # Session wird erst erstellt wenn Stammdaten vorhanden
         self._update_progress()
@@ -201,12 +199,9 @@ class TestDataForm(QWidget):
         self._populate_table()
         
         # Signal nur verbinden wenn noch nicht verbunden
-        try:
-            self._table.itemChanged.disconnect(self._on_table_changed)
-        except RuntimeError:
-            pass  # War noch nicht verbunden
-        
-        self._table.itemChanged.connect(self._on_table_changed)
+        if not self._signal_connected:
+            self._table.itemChanged.connect(self._on_table_changed)
+            self._signal_connected = True
         
         # Buttons aktivieren
         self._save_btn.setEnabled(True)
