@@ -33,31 +33,32 @@ class TestDataForm(QWidget):
     def _setup_ui(self):
         """Erstellt das UI-Layout"""
         layout = QVBoxLayout(self)
-        layout.setSpacing(20)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)  # Reduziert von 20 auf 10
+        layout.setContentsMargins(15, 15, 15, 15)  # Reduziert von 20 auf 15
         
-        # Titelbereich
+        # Titelbereich (kompakt)
         title = QLabel("Testdaten-Eingabe")
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;")
+        title.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")  # Reduziert von 18px
         layout.addWidget(title)
         
-        # Info-Bereich
+        # Info-Bereich (kompakt, kein stretch)
         self._info_group = self._create_info_section()
-        layout.addWidget(self._info_group)
+        layout.addWidget(self._info_group, stretch=0)
         
-        # Tabelle für Test-Ergebnisse
+        # Tabelle für Test-Ergebnisse (größter Bereich, nutzt verfügbaren Platz)
         self._table = self._create_results_table()
-        layout.addWidget(self._table, stretch=1)
+        layout.addWidget(self._table, stretch=10)  # Erhöht von 1 auf 10 für mehr Platz
         
-        # Notizen-Bereich
+        # Notizen-Bereich (kompakt)
         notes_group = QGroupBox("Session-Notizen")
         notes_group.setStyleSheet("QGroupBox { font-weight: bold; }")
         notes_layout = QVBoxLayout(notes_group)
         self._session_notes = QTextEdit()
         self._session_notes.setPlaceholderText("Allgemeine Notizen zur Test-Session...")
-        self._session_notes.setMaximumHeight(100)
+        self._session_notes.setMinimumHeight(60)
+        self._session_notes.setMaximumHeight(80)  # Reduziert von 100 auf 80
         notes_layout.addWidget(self._session_notes)
-        layout.addWidget(notes_group)
+        layout.addWidget(notes_group, stretch=0)  # Kein stretch, feste Größe
         
         # Button-Leiste
         button_layout = QHBoxLayout()
@@ -86,22 +87,26 @@ class TestDataForm(QWidget):
         layout.addLayout(button_layout)
     
     def _create_info_section(self) -> QGroupBox:
-        """Erstellt den Info-Bereich"""
+        """Erstellt den Info-Bereich (kompakt)"""
         group = QGroupBox("Session-Information")
         group.setStyleSheet("QGroupBox { font-weight: bold; }")
         layout = QVBoxLayout(group)
+        layout.setSpacing(5)  # Reduzierter Abstand
+        layout.setContentsMargins(10, 10, 10, 10)  # Kompakte Margins
         
         self._dog_info_label = QLabel("Kein Hund ausgewählt")
-        self._dog_info_label.setStyleSheet("color: #7f8c8d;")
+        self._dog_info_label.setStyleSheet("color: #7f8c8d; font-size: 12px;")
         layout.addWidget(self._dog_info_label)
         
         self._battery_info_label = QLabel("Keine Testbatterie geladen")
-        self._battery_info_label.setStyleSheet("color: #7f8c8d;")
+        self._battery_info_label.setStyleSheet("color: #7f8c8d; font-size: 12px;")
         layout.addWidget(self._battery_info_label)
         
         self._progress_label = QLabel("Fortschritt: 0 / 0 Tests")
-        self._progress_label.setStyleSheet("color: #3498db; font-weight: bold;")
+        self._progress_label.setStyleSheet("color: #3498db; font-weight: bold; font-size: 12px;")
         layout.addWidget(self._progress_label)
+        
+        group.setMaximumHeight(100)  # Maximale Höhe begrenzen
         
         return group
     
@@ -112,6 +117,9 @@ class TestDataForm(QWidget):
         table.setHorizontalHeaderLabels([
             "Nr.", "Testbeschreibung", "OCEAN", "Score (-2 bis +2)", "Notizen"
         ])
+        
+        # Minimale Höhe für mindestens 5 sichtbare Zeilen
+        table.setMinimumHeight(250)
         
         # Spaltenbreiten
         header = table.horizontalHeader()

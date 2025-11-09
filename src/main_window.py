@@ -10,10 +10,11 @@ Integriert alle Module:
 """
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget,
-    QMenuBar, QMenu, QFileDialog, QMessageBox, QLabel, QPushButton
+    QMenuBar, QMenu, QFileDialog, QMessageBox, QLabel, QPushButton,
+    QScrollArea, QApplication
 )
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QKeySequence, QScreen
 from pathlib import Path
 from typing import Optional
 from datetime import datetime
@@ -37,7 +38,9 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Dog Mentality Test - OCEAN Persönlichkeitsanalyse")
-        self.setGeometry(100, 50, 1400, 900)
+        
+        # Responsive Fenstergröße basierend auf Bildschirmauflösung
+        self._setup_window_size()
         
         # Daten
         self._current_battery: Optional[TestBattery] = None
@@ -52,6 +55,63 @@ class MainWindow(QMainWindow):
         
         # Statusleiste
         self.statusBar().showMessage("Bereit")
+    
+    def _setup_window_size(self):
+        """
+        Setzt Fenstergröße responsiv basierend auf Bildschirmauflösung
+        Passt sich flexibel an kleine Bildschirme an
+        """
+        # Bildschirmauflösung ermitteln
+        screen = QApplication.primaryScreen()
+        if screen:
+            screen_geometry = screen.availableGeometry()
+            screen_width = screen_geometry.width()
+            screen_height = screen_geometry.height()
+            
+            # Für sehr kleine Bildschirme: Maximiere verfügbaren Platz
+            if screen_height < 800:
+                # Kleine Laptops: Nutze fast den gesamten Bildschirm
+                width = screen_width - 40
+                height = screen_height - 100  # Platz für Taskleiste/Dock
+            else:
+                # Normale/Große Bildschirme: 85-90% nutzen
+                width = int(screen_width * 0.90)
+                height = int(screen_height * 0.85)
+            
+            # Absolutes Minimum für Nutzbarkeit (sehr konservativ)
+            width = max(900, width)
+            height = max(650, height)
+            
+            # Maximum für große Bildschirme
+            width = min(1600, width)
+            height = min(1000, height)
+            
+            # Sicherstellen, dass Fenster niemals größer als Bildschirm
+            width = min(width, screen_width - 40)
+            height = min(height, screen_height - 100)
+            
+            # Fenster positionieren (oben, leicht zentriert)
+            x = max(20, (screen_width - width) // 2)
+            y = 20  # Immer 20px von oben (Menüleiste immer sichtbar)
+            
+            self.setGeometry(x, y, width, height)
+        else:
+            # Fallback: Sehr konservative Größe
+            self.setGeometry(50, 30, 900, 650)
+        
+        # Minimale Fenstergröße flexibel setzen
+        min_width = 900
+        min_height = 650
+        
+        # Wenn Bildschirm kleiner als Minimum, anpassen
+        if screen:
+            screen_geom = screen.availableGeometry()
+            if screen_geom.height() < 750:
+                min_height = screen_geom.height() - 100
+            if screen_geom.width() < 950:
+                min_width = screen_geom.width() - 50
+            
+        self.setMinimumSize(max(800, min_width), max(600, min_height))
     
     def _setup_ui(self):
         """Erstellt das UI-Layout"""
@@ -90,22 +150,34 @@ class MainWindow(QMainWindow):
             }
         """)
         
-        # Tab 1: Stammdaten
+        # Tab 1: Stammdaten (mit ScrollArea für kleine Bildschirme)
         self._master_data_form = MasterDataForm()
+        master_scroll = QScrollArea()
+        master_scroll.setWidgetResizable(True)
+        master_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        
         master_widget = QWidget()
         master_layout = QVBoxLayout(master_widget)
         master_layout.setContentsMargins(20, 20, 20, 20)
         master_layout.addWidget(self._master_data_form)
         master_layout.addStretch()
-        self._tab_widget.addTab(master_widget, "📋 Stammdaten")
         
-        # Tab 2: Test-Durchführung
+        master_scroll.setWidget(master_widget)
+        self._tab_widget.addTab(master_scroll, "📋 Stammdaten")
+        
+        # Tab 2: Test-Durchführung (mit ScrollArea)
         self._test_data_form = TestDataForm()
+        test_scroll = QScrollArea()
+        test_scroll.setWidgetResizable(True)
+        test_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        
         test_widget = QWidget()
         test_layout = QVBoxLayout(test_widget)
         test_layout.setContentsMargins(20, 20, 20, 20)
         test_layout.addWidget(self._test_data_form)
-        self._tab_widget.addTab(test_widget, "🧪 Test-Durchführung")
+        
+        test_scroll.setWidget(test_widget)
+        self._tab_widget.addTab(test_scroll, "🧪 Test-Durchführung")
         
         # Tab 3: Auswertung
         self._analysis_widget = self._create_analysis_tab()
@@ -137,7 +209,11 @@ class MainWindow(QMainWindow):
         return header
     
     def _create_analysis_tab(self) -> QWidget:
-        """Erstellt den Auswertungs-Tab"""
+        """Erstellt den Auswertungs-Tab (mit ScrollArea)"""
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -210,7 +286,8 @@ class MainWindow(QMainWindow):
         
         layout.addLayout(button_layout)
         
-        return widget
+        scroll.setWidget(widget)
+        return scroll
     
     def _create_menu_bar(self):
         """Erstellt die Menüleiste"""
