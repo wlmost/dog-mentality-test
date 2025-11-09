@@ -28,6 +28,8 @@ from src.excel_importer import TestBatteryImporter
 from src.excel_exporter import ExcelExporter, ExcelExportError
 from src.pdf_exporter import PdfExporter, PdfExportError
 from src.models import DogData
+from src.ocean_analyzer import OceanAnalyzer
+from src.ocean_chart import OceanRadarChart
 
 
 class MainWindow(QMainWindow):
@@ -232,10 +234,10 @@ class MainWindow(QMainWindow):
         info.setWordWrap(True)
         layout.addWidget(info)
         
-        # Platzhalter für Plot
-        plot_placeholder = QLabel("📊 OCEAN Radardiagramm")
-        plot_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        plot_placeholder.setStyleSheet("""
+        # Platzhalter für Plot (wird durch OceanRadarChart ersetzt)
+        self._plot_placeholder = QLabel("📊 OCEAN Radardiagramm")
+        self._plot_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._plot_placeholder.setStyleSheet("""
             background-color: #ecf0f1;
             border: 2px dashed #bdc3c7;
             border-radius: 10px;
@@ -244,7 +246,14 @@ class MainWindow(QMainWindow):
             font-weight: bold;
             color: #95a5a6;
         """)
-        layout.addWidget(plot_placeholder, stretch=1)
+        
+        # Container für Chart (wird später ersetzt)
+        self._chart_container = QWidget()
+        chart_layout = QVBoxLayout(self._chart_container)
+        chart_layout.setContentsMargins(0, 0, 0, 0)
+        chart_layout.addWidget(self._plot_placeholder)
+        
+        layout.addWidget(self._chart_container, stretch=1)
         
         # Button-Leiste
         button_layout = QHBoxLayout()
@@ -701,14 +710,53 @@ class MainWindow(QMainWindow):
             )
             return
         
+        if not self._current_battery:
+            QMessageBox.warning(
+                self,
+                "Keine Testbatterie",
+                "Bitte laden Sie zuerst eine Testbatterie, um die OCEAN-Dimensionen zu berechnen."
+            )
+            return
+        
         # Zum Auswertungs-Tab wechseln
         self._tab_widget.setCurrentIndex(2)
         
-        QMessageBox.information(
-            self,
-            "Noch nicht implementiert",
-            "OCEAN-Radardiagramm wird in Modul 7 implementiert."
-        )
+        try:
+            # OCEAN-Scores berechnen
+            analyzer = OceanAnalyzer(self._current_session, self._current_battery)
+            scores = analyzer.calculate_ocean_scores()
+            
+            # Radardiagramm erstellen
+            chart_widget = OceanRadarChart(scores)
+            
+            # Altes Widget aus Container entfernen
+            layout = self._chart_container.layout()
+            for i in reversed(range(layout.count())):
+                widget = layout.itemAt(i).widget()
+                if widget:
+                    widget.setParent(None)
+            
+            # Neues Chart hinzufügen
+            layout.addWidget(chart_widget)
+            
+            # Erfolgsmeldung
+            QMessageBox.information(
+                self,
+                "OCEAN-Analyse",
+                f"OCEAN-Radardiagramm wurde erstellt!\n\n"
+                f"Anzahl ausgewerteter Tests:\n"
+                f"  Openness: {scores.openness_count}\n"
+                f"  Conscientiousness: {scores.conscientiousness_count}\n"
+                f"  Extraversion: {scores.extraversion_count}\n"
+                f"  Agreeableness: {scores.agreeableness_count}\n"
+                f"  Neuroticism: {scores.neuroticism_count}"
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Fehler",
+                f"Fehler beim Erstellen des Radardiagramms:\n{str(e)}"
+            )
     
     def _show_statistics(self):
         """Zeigt Statistik"""
