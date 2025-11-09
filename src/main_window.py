@@ -718,9 +718,6 @@ class MainWindow(QMainWindow):
             )
             return
         
-        # Zum Auswertungs-Tab wechseln
-        self._tab_widget.setCurrentIndex(2)
-        
         try:
             # OCEAN-Scores berechnen
             analyzer = OceanAnalyzer(self._current_session, self._current_battery)
@@ -729,15 +726,22 @@ class MainWindow(QMainWindow):
             # Radardiagramm erstellen
             chart_widget = OceanRadarChart(scores)
             
-            # Altes Widget aus Container entfernen
+            # Altes Widget aus Container entfernen und löschen
             layout = self._chart_container.layout()
-            for i in reversed(range(layout.count())):
-                widget = layout.itemAt(i).widget()
-                if widget:
-                    widget.setParent(None)
+            if layout:
+                for i in reversed(range(layout.count())):
+                    item = layout.itemAt(i)
+                    if item:
+                        widget = item.widget()
+                        if widget:
+                            widget.setParent(None)
+                            widget.deleteLater()
             
             # Neues Chart hinzufügen
             layout.addWidget(chart_widget)
+            
+            # Zum Auswertungs-Tab wechseln (erst nach erfolgreicher Erstellung)
+            self._tab_widget.setCurrentIndex(2)
             
             # Erfolgsmeldung
             QMessageBox.information(
