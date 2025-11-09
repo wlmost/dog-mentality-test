@@ -98,16 +98,57 @@ class OceanRadarChart(QWidget):
         # Plotly Scatterpolar (Radar) Chart erstellen
         fig = go.Figure()
         
+        # Trace 1: Ist-Profil (gemessene Werte) - Blau, durchgezogen
         fig.add_trace(go.Scatterpolar(
             r=dimension_values,
             theta=dimension_labels,
             fill='toself',
             fillcolor='rgba(52, 152, 219, 0.3)',  # Blau mit Transparenz
             line=dict(color='rgb(52, 152, 219)', width=3),  # Dickere Linie
-            name='OCEAN-Profil',
+            name='Ist-Profil',
             marker=dict(size=8, color='rgb(52, 152, 219)'),  # Größere Punkte
-            hovertemplate='<b>%{theta}</b><br>Summenwert: %{r}<extra></extra>',
+            hovertemplate='<b>%{theta}</b><br>Ist-Wert: %{r}<extra></extra>',
         ))
+        
+        # Trace 2: Fragebogen-Profil (falls vorhanden) - Rot, gepunktet
+        if self.scores.owner_profile:
+            owner_values = [
+                self.scores.owner_profile.get('O', 0),
+                self.scores.owner_profile.get('C', 0),
+                self.scores.owner_profile.get('E', 0),
+                self.scores.owner_profile.get('A', 0),
+                self.scores.owner_profile.get('N', 0),
+            ]
+            fig.add_trace(go.Scatterpolar(
+                r=owner_values,
+                theta=dimension_labels,
+                fill='toself',
+                fillcolor='rgba(231, 76, 60, 0.15)',  # Rot mit Transparenz
+                line=dict(color='rgb(231, 76, 60)', width=2, dash='dot'),  # Gepunktet
+                name='Fragebogen-Profil',
+                marker=dict(size=6, color='rgb(231, 76, 60)'),
+                hovertemplate='<b>%{theta}</b><br>Fragebogen: %{r}<extra></extra>',
+            ))
+        
+        # Trace 3: Ideal-Profil (falls vorhanden) - Grün, gestrichelt
+        if self.scores.ideal_profile:
+            ideal_values = [
+                self.scores.ideal_profile.get('O', 0),
+                self.scores.ideal_profile.get('C', 0),
+                self.scores.ideal_profile.get('E', 0),
+                self.scores.ideal_profile.get('A', 0),
+                self.scores.ideal_profile.get('N', 0),
+            ]
+            fig.add_trace(go.Scatterpolar(
+                r=ideal_values,
+                theta=dimension_labels,
+                fill='toself',
+                fillcolor='rgba(46, 204, 113, 0.15)',  # Grün mit Transparenz
+                line=dict(color='rgb(46, 204, 113)', width=2, dash='dash'),  # Gestrichelt
+                name='Ideal-Profil (KI)',
+                marker=dict(size=6, color='rgb(46, 204, 113)'),
+                hovertemplate='<b>%{theta}</b><br>Ideal-Wert: %{r}<extra></extra>',
+            ))
         
         # Bestimme Achsen-Range basierend auf Anzahl Tests pro Dimension
         # Jeder Test kann -2 bis +2 Punkte geben

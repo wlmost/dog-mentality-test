@@ -39,6 +39,9 @@ class OceanScores:
         neuroticism: Summe aller Scores für Neuroticism
         
         *_count: Anzahl Tests pro Dimension (für Durchschnittsberechnung)
+        
+        ideal_profile: Optional dict mit idealen Werten von KI (O, C, E, A, N)
+        owner_profile: Optional dict mit Halter-Erwartungen (O, C, E, A, N)
     """
     openness: int = 0
     conscientiousness: int = 0
@@ -51,6 +54,9 @@ class OceanScores:
     extraversion_count: int = 0
     agreeableness_count: int = 0
     neuroticism_count: int = 0
+    
+    ideal_profile: Optional[dict] = None
+    owner_profile: Optional[dict] = None
     
     def get_averages(self) -> dict[str, float]:
         """

@@ -11,7 +11,7 @@ Integriert alle Module:
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget,
     QMenuBar, QMenu, QFileDialog, QMessageBox, QLabel, QPushButton,
-    QScrollArea, QApplication
+    QScrollArea, QApplication, QGroupBox, QFormLayout, QSpinBox
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence, QScreen
@@ -234,6 +234,10 @@ class MainWindow(QMainWindow):
         info.setWordWrap(True)
         layout.addWidget(info)
         
+        # Halter-Profil Eingabemaske
+        owner_group = self._create_owner_profile_input()
+        layout.addWidget(owner_group)
+        
         # Platzhalter für Plot (wird durch OceanRadarChart ersetzt)
         self._plot_placeholder = QLabel("📊 OCEAN Radardiagramm")
         self._plot_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -304,6 +308,93 @@ class MainWindow(QMainWindow):
         
         scroll.setWidget(widget)
         return scroll
+    
+    def _create_owner_profile_input(self) -> QGroupBox:
+        """Erstellt die Eingabemaske für das Fragebogen-Profil"""
+        group = QGroupBox("Fragebogen-Profil (Ergebnis des Fragebogens)")
+        group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid #3498db;
+                border-radius: 6px;
+                margin-top: 6px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+                color: #3498db;
+            }
+        """)
+        
+        layout = QFormLayout()
+        layout.setSpacing(10)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Info-Text
+        info = QLabel(
+            "Tragen Sie hier die OCEAN-Werte aus dem Fragebogen ein.\n"
+            "Wertebereich: -14 bis +14 (abhängig von der Testbatterie)"
+        )
+        info.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+        info.setWordWrap(True)
+        layout.addRow(info)
+        
+        # Eingabefelder für OCEAN-Dimensionen
+        from PySide6.QtWidgets import QSpinBox
+        
+        self._owner_o_input = QSpinBox()
+        self._owner_o_input.setRange(-14, 14)
+        self._owner_o_input.setValue(0)
+        self._owner_o_input.setMinimumHeight(30)
+        layout.addRow("Offenheit (O):", self._owner_o_input)
+        
+        self._owner_c_input = QSpinBox()
+        self._owner_c_input.setRange(-14, 14)
+        self._owner_c_input.setValue(0)
+        self._owner_c_input.setMinimumHeight(30)
+        layout.addRow("Gewissenhaftigkeit (C):", self._owner_c_input)
+        
+        self._owner_e_input = QSpinBox()
+        self._owner_e_input.setRange(-14, 14)
+        self._owner_e_input.setValue(0)
+        self._owner_e_input.setMinimumHeight(30)
+        layout.addRow("Extraversion (E):", self._owner_e_input)
+        
+        self._owner_a_input = QSpinBox()
+        self._owner_a_input.setRange(-14, 14)
+        self._owner_a_input.setValue(0)
+        self._owner_a_input.setMinimumHeight(30)
+        layout.addRow("Verträglichkeit (A):", self._owner_a_input)
+        
+        self._owner_n_input = QSpinBox()
+        self._owner_n_input.setRange(-14, 14)
+        self._owner_n_input.setValue(0)
+        self._owner_n_input.setMinimumHeight(30)
+        layout.addRow("Neurotizismus (N):", self._owner_n_input)
+        
+        # Button zum Übernehmen
+        apply_btn = QPushButton("Fragebogen-Profil übernehmen")
+        apply_btn.setMinimumHeight(35)
+        apply_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px 20px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+        """)
+        apply_btn.clicked.connect(self._apply_owner_profile)
+        layout.addRow(apply_btn)
+        
+        group.setLayout(layout)
+        return group
     
     def _create_menu_bar(self):
         """Erstellt die Menüleiste"""
@@ -730,6 +821,14 @@ class MainWindow(QMainWindow):
             analyzer = OceanAnalyzer(self._current_session, self._current_battery)
             scores = analyzer.calculate_ocean_scores()
             
+            # Bestehende Profile bewahren (falls vorhanden)
+            if hasattr(self, '_current_ocean_scores') and self._current_ocean_scores is not None:
+                scores.owner_profile = self._current_ocean_scores.owner_profile
+                scores.ideal_profile = self._current_ocean_scores.ideal_profile
+            
+            # Scores speichern für spätere Updates (z.B. Fragebogen-Profil)
+            self._current_ocean_scores = scores
+            
             # Altes Widget aus Container entfernen und löschen
             layout = self._chart_container.layout()
             
@@ -782,6 +881,35 @@ class MainWindow(QMainWindow):
                 "Fehler",
                 error_msg
             )
+    
+    def _apply_owner_profile(self):
+        """Übernimmt Fragebogen-Profil-Werte und aktualisiert das Radardiagramm"""
+        # Prüfen ob OCEAN-Analyse existiert
+        if not hasattr(self, '_current_ocean_scores') or self._current_ocean_scores is None:
+            QMessageBox.warning(
+                self,
+                "Keine Analyse",
+                "Bitte erstellen Sie zuerst eine OCEAN-Analyse, bevor Sie das Fragebogen-Profil übernehmen."
+            )
+            return
+        
+        # Werte aus SpinBoxes auslesen
+        owner_dict = {
+            'O': self._owner_o_input.value(),
+            'C': self._owner_c_input.value(),
+            'E': self._owner_e_input.value(),
+            'A': self._owner_a_input.value(),
+            'N': self._owner_n_input.value()
+        }
+        
+        # Fragebogen-Profil in Scores speichern
+        self._current_ocean_scores.owner_profile = owner_dict
+        
+        # Radardiagramm neu laden (refresh)
+        self._show_ocean_plot()
+        
+        # Bestätigung
+        self.statusBar().showMessage("Fragebogen-Profil übernommen und Diagramm aktualisiert", 3000)
     
     def _show_statistics(self):
         """Zeigt Statistik"""
