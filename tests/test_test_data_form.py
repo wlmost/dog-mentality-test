@@ -207,7 +207,7 @@ class TestTestDataFormScoreEntry:
         assert result.notes == "Sehr aufgeschlossen"
     
     def test_progress_update(self, qtbot, sample_dog, sample_battery):
-        """Test: Fortschritt wird aktualisiert"""
+        """Test: Fortschritt wird aktualisiert bei Wertänderung"""
         form = TestDataForm()
         qtbot.addWidget(form)
         form.load_data(sample_dog, sample_battery)
@@ -221,6 +221,38 @@ class TestTestDataFormScoreEntry:
         
         # Fortschritt sollte aktualisiert sein
         assert "1 / 5" in form._progress_label.text()
+    
+    def test_progress_update_on_focus(self, qtbot, sample_dog, sample_battery):
+        """Test: Fortschritt wird bei Fokus auf Score-Feld aktualisiert"""
+        from PySide6.QtCore import QEvent, QCoreApplication
+        
+        form = TestDataForm()
+        qtbot.addWidget(form)
+        form.load_data(sample_dog, sample_battery)
+        
+        # Initial 0 Tests
+        assert "0 / 5" in form._progress_label.text()
+        
+        # FocusIn-Event für Test 1 Score-Widget simulieren
+        score_widget = form._table.cellWidget(0, 3)
+        focus_event = QEvent(QEvent.Type.FocusIn)
+        QCoreApplication.sendEvent(score_widget, focus_event)
+        
+        # Fortschritt sollte sich aktualisiert haben (Test als "touched" markiert)
+        assert "1 / 5" in form._progress_label.text()
+        
+        # FocusIn-Event für Test 2
+        score_widget_2 = form._table.cellWidget(1, 3)
+        focus_event_2 = QEvent(QEvent.Type.FocusIn)
+        QCoreApplication.sendEvent(score_widget_2, focus_event_2)
+        
+        # Jetzt 2 Tests
+        assert "2 / 5" in form._progress_label.text()
+        
+        # Erneuter Fokus auf Test 1 sollte nichts ändern (bereits touched)
+        focus_event_3 = QEvent(QEvent.Type.FocusIn)
+        QCoreApplication.sendEvent(score_widget, focus_event_3)
+        assert "2 / 5" in form._progress_label.text()  # Immer noch 2
 
 
 class TestTestDataFormSaving:

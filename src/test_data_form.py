@@ -28,6 +28,7 @@ class TestDataForm(QWidget):
         self._dog_data: Optional[DogData] = None
         self._battery: Optional[TestBattery] = None
         self._session: Optional[TestSession] = None
+        self._touched_tests: set[int] = set()  # Tests die fokussiert wurden
         self._signal_connected = False  # Track ob Signal verbunden ist
         self._setup_ui()
     
@@ -188,6 +189,7 @@ class TestDataForm(QWidget):
         self._dog_data = dog_data
         self._battery = battery
         self._session = TestSession(dog_data=dog_data, battery_name=battery.name)
+        self._touched_tests.clear()  # Reset bei neuer Session
         
         # Info aktualisieren
         self._dog_info_label.setText(
@@ -253,6 +255,8 @@ class TestDataForm(QWidget):
             score_widget.setValue(0)
             score_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
             score_widget.valueChanged.connect(self._on_score_changed)
+            score_widget.installEventFilter(self)  # Für Focus-Tracking
+            score_widget.setProperty("test_number", test.number)  # Test-Nummer speichern
             self._table.setCellWidget(row, 3, score_widget)
             
             # Notizen (editierbar)
@@ -298,13 +302,25 @@ class TestDataForm(QWidget):
             result = TestResult(test_number=test_num, score=score, notes=notes)
             self._session.add_result(result)
     
+    def eventFilter(self, obj, event):
+        """Event-Filter für Focus-Tracking der Score-Widgets"""
+        from PySide6.QtCore import QEvent
+        
+        if isinstance(obj, QSpinBox) and event.type() == QEvent.Type.FocusIn:
+            test_num = obj.property("test_number")
+            if test_num and test_num not in self._touched_tests:
+                self._touched_tests.add(test_num)
+                self._update_progress()
+        
+        return super().eventFilter(obj, event)
+    
     def _update_progress(self):
         """Aktualisiert die Fortschrittsanzeige"""
         if not self._session or not self._battery:
             return
         
-        # Zähle nur Tests mit Score != 0 als "bearbeitet"
-        completed = sum(1 for result in self._session.results.values() if result.score != 0)
+        # Zähle Tests die entweder Score != 0 haben ODER fokussiert wurden
+        completed = len(self._touched_tests | {r.test_number for r in self._session.results.values() if r.score != 0})
         total = len(self._battery.tests)
         self._progress_label.setText(f"Fortschritt: {completed} / {total} Tests")
     
