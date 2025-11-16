@@ -129,7 +129,7 @@
 **Beschreibung:**
 - Mapping Bewertungsskalen → OCEAN-Faktoren
 - Aggregationslogik
-- Radar-Diagramm mit matplotlib
+- Radar-Diagramm mit PyChart / Plotly
 - Integration in GUI
 
 **OCEAN-Faktoren:**

@@ -218,3 +218,75 @@ class TestTestSession:
         assert loaded_session.has_result(1)
         assert loaded_session.get_result(1).score == 2
         assert loaded_session.session_notes == "Test-Session erfolgreich"
+    
+    def test_save_and_load_with_profiles(self, tmp_path):
+        """Test: Speichern und Laden mit KI-Profilen"""
+        dog = DogData(
+            owner_name="Max", dog_name="Bello",
+            age_years=5, age_months=0,
+            gender=Gender.MALE, neutered=False
+        )
+        
+        # Session mit allen KI-Features erstellen
+        session = TestSession(
+            dog_data=dog, 
+            battery_name="Test",
+            ideal_profile={'O': 8, 'C': 10, 'E': 6, 'A': 12, 'N': -4},
+            owner_profile={'O': 7, 'C': 9, 'E': 5, 'A': 11, 'N': -3},
+            ai_assessment="Sehr guter Hund für Therapiearbeit."
+        )
+        session.add_result(TestResult(test_number=1, score=2))
+        
+        # Speichern
+        filepath = tmp_path / "test_with_profiles.json"
+        session.save_to_file(str(filepath))
+        
+        # Laden
+        loaded = TestSession.load_from_file(str(filepath))
+        
+        # KI-Features prüfen
+        assert loaded.ideal_profile == {'O': 8, 'C': 10, 'E': 6, 'A': 12, 'N': -4}
+        assert loaded.owner_profile == {'O': 7, 'C': 9, 'E': 5, 'A': 11, 'N': -3}
+        assert loaded.ai_assessment == "Sehr guter Hund für Therapiearbeit."
+        
+        # Basisdaten prüfen
+        assert loaded.dog_data.dog_name == "Bello"
+        assert loaded.has_result(1)
+    
+    def test_backward_compatibility_load(self, tmp_path):
+        """Test: Alte Sessions ohne KI-Features laden"""
+        # Alte Session ohne KI-Features simulieren
+        old_data = {
+            "dog_data": {
+                "owner_name": "Max",
+                "dog_name": "Bello",
+                "age_years": 5,
+                "age_months": 0,
+                "gender": "Rüde",
+                "neutered": False
+            },
+            "battery_name": "Test",
+            "results": {
+                "1": {"test_number": 1, "score": 2, "notes": "Gut"}
+            },
+            "date": "2025-01-01T12:00:00",
+            "session_notes": "Alte Session"
+        }
+        
+        # Als JSON speichern
+        filepath = tmp_path / "old_session.json"
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(old_data, f)
+        
+        # Laden sollte funktionieren ohne Fehler
+        loaded = TestSession.load_from_file(str(filepath))
+        
+        # KI-Features sollten None sein
+        assert loaded.ideal_profile is None
+        assert loaded.owner_profile is None
+        assert loaded.ai_assessment is None
+        
+        # Basisdaten sollten korrekt sein
+        assert loaded.dog_data.dog_name == "Bello"
+        assert loaded.battery_name == "Test"
+        assert loaded.session_notes == "Alte Session"

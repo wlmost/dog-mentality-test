@@ -51,12 +51,22 @@ class TestResult:
 class TestSession:
     """
     Komplette Test-Session mit Hund und allen Ergebnissen
+    
+    Erweitert mit KI-Features:
+    - ideal_profile: KI-generiertes Idealprofil für die Rolle des Hundes
+    - owner_profile: Fragebogen-Profil basierend auf Halter-Erwartungen
+    - ai_assessment: KI-Bewertung basierend auf allen 3 Profilen
     """
     dog_data: DogData
     battery_name: str
     results: Dict[int, TestResult] = field(default_factory=dict)
     date: str = field(default_factory=lambda: datetime.now().isoformat())
     session_notes: str = ""
+    
+    # KI-Features (Phase 2/3)
+    ideal_profile: Optional[Dict[str, int]] = None
+    owner_profile: Optional[Dict[str, int]] = None
+    ai_assessment: Optional[str] = None
     
     def __post_init__(self):
         """Validierung"""
@@ -80,8 +90,8 @@ class TestSession:
         return len(self.results)
     
     def to_dict(self) -> dict:
-        """Konvertiert TestSession zu Dictionary"""
-        return {
+        """Konvertiert TestSession zu Dictionary (inkl. KI-Features)"""
+        data = {
             "dog_data": self.dog_data.to_dict(),
             "battery_name": self.battery_name,
             "results": {
@@ -91,10 +101,20 @@ class TestSession:
             "date": self.date,
             "session_notes": self.session_notes
         }
+        
+        # KI-Features optional hinzufügen
+        if self.ideal_profile is not None:
+            data["ideal_profile"] = self.ideal_profile
+        if self.owner_profile is not None:
+            data["owner_profile"] = self.owner_profile
+        if self.ai_assessment is not None:
+            data["ai_assessment"] = self.ai_assessment
+        
+        return data
     
     @classmethod
     def from_dict(cls, data: dict) -> "TestSession":
-        """Erstellt TestSession aus Dictionary"""
+        """Erstellt TestSession aus Dictionary (inkl. KI-Features)"""
         dog_data = DogData.from_dict(data["dog_data"])
         
         # Results konvertieren
@@ -108,7 +128,10 @@ class TestSession:
             battery_name=data["battery_name"],
             results=results,
             date=data.get("date", datetime.now().isoformat()),
-            session_notes=data.get("session_notes", "")
+            session_notes=data.get("session_notes", ""),
+            ideal_profile=data.get("ideal_profile"),
+            owner_profile=data.get("owner_profile"),
+            ai_assessment=data.get("ai_assessment")
         )
     
     def save_to_file(self, filepath: str):

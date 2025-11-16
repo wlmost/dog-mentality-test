@@ -30,6 +30,8 @@ from src.pdf_exporter import PdfExporter, PdfExportError
 from src.models import DogData
 from src.ocean_analyzer import OceanAnalyzer
 from src.ocean_chart import OceanRadarChart
+from src.settings import settings
+from src.ai_service import AIProfileService, AIProfileError, AIProfileConnectionError, AIProfileConfigError
 
 
 class MainWindow(QMainWindow):
@@ -393,6 +395,79 @@ class MainWindow(QMainWindow):
         apply_btn.clicked.connect(self._apply_owner_profile)
         layout.addRow(apply_btn)
         
+        # Separator
+        separator = QLabel()
+        separator.setFixedHeight(1)
+        separator.setStyleSheet("background-color: #bdc3c7; margin: 10px 0;")
+        layout.addRow(separator)
+        
+        # KI-Features Info
+        ki_info = QLabel(
+            "KI-gestützte Features (benötigt OpenAI API-Key in .env)"
+        )
+        ki_info.setStyleSheet("color: #7f8c8d; font-size: 12px; font-style: italic;")
+        ki_info.setWordWrap(True)
+        layout.addRow(ki_info)
+        
+        # KI-Idealprofil Button
+        self._load_ideal_btn = QPushButton("KI-Idealprofil laden")
+        self._load_ideal_btn.setMinimumHeight(35)
+        self._load_ideal_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2ecc71;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px 20px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #27ae60;
+            }
+            QPushButton:disabled {
+                background-color: #95a5a6;
+                color: #ecf0f1;
+            }
+        """)
+        self._load_ideal_btn.clicked.connect(self._load_ideal_profile)
+        layout.addRow(self._load_ideal_btn)
+        
+        # KI-Bewertung Button
+        self._show_assessment_btn = QPushButton("KI-Bewertung anzeigen")
+        self._show_assessment_btn.setMinimumHeight(35)
+        self._show_assessment_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #9b59b6;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px 20px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #8e44ad;
+            }
+            QPushButton:disabled {
+                background-color: #95a5a6;
+                color: #ecf0f1;
+            }
+        """)
+        self._show_assessment_btn.clicked.connect(self._show_assessment)
+        self._show_assessment_btn.setEnabled(False)  # Erst aktiv wenn alle 3 Profile da
+        layout.addRow(self._show_assessment_btn)
+        
+        # Prüfe ob API konfiguriert ist
+        if not settings.is_openai_configured:
+            self._load_ideal_btn.setEnabled(False)
+            self._load_ideal_btn.setToolTip(
+                "OpenAI API nicht konfiguriert. Bitte .env Datei erstellen.\n"
+                "Siehe docs/api_setup.md für Anleitung."
+            )
+            self._show_assessment_btn.setToolTip(
+                "OpenAI API nicht konfiguriert. Bitte .env Datei erstellen.\n"
+                "Siehe docs/api_setup.md für Anleitung."
+            )
+        
         group.setLayout(layout)
         return group
     
@@ -593,6 +668,51 @@ class MainWindow(QMainWindow):
             self._current_file = Path(filename)
             self._unsaved_changes = False
             
+            # KI-Profile wiederherstellen (wenn vorhanden) - NACH Session-Zuweisung
+            if session.ideal_profile or session.owner_profile:
+                if session.results and self._current_battery:
+                    # OCEAN-Analyse mit gespeicherten Profilen durchführen
+                    analyzer = OceanAnalyzer(session, self._current_battery)
+                    scores = analyzer.calculate_ocean_scores()
+                    
+                    # Gespeicherte Profile übernehmen
+                    if session.ideal_profile:
+                        scores.ideal_profile = session.ideal_profile
+                    if session.owner_profile:
+                        scores.owner_profile = session.owner_profile
+                    
+                    self._current_ocean_scores = scores
+                    
+                    # Chart mit allen Profilen anzeigen
+                    layout = self._chart_container.layout()
+                    if layout:
+                        while layout.count():
+                            item = layout.takeAt(0)
+                            if item:
+                                widget = item.widget()
+                                if widget:
+                                    widget.deleteLater()
+                    else:
+                        from PySide6.QtWidgets import QVBoxLayout
+                        layout = QVBoxLayout(self._chart_container)
+                        layout.setContentsMargins(0, 0, 0, 0)
+                    
+                    self._tab_widget.setCurrentIndex(2)
+                    from PySide6.QtCore import QCoreApplication
+                    QCoreApplication.processEvents()
+                    
+                    chart_widget = OceanRadarChart(scores, parent=self._chart_container)
+                    layout.addWidget(chart_widget)
+                    QCoreApplication.processEvents()
+                    
+                    self.statusBar().showMessage(
+                        f"Session geladen mit KI-Profilen: {filename}", 3000
+                    )
+                    
+                    # Assessment-Button-Status aktualisieren
+                    self._update_assessment_button_state()
+                    return
+            
             self.statusBar().showMessage(f"Session geladen: {filename}", 3000)
         
         except Exception as e:
@@ -640,7 +760,7 @@ class MainWindow(QMainWindow):
             self._save_to_file(Path(filename))
     
     def _save_to_file(self, filepath: Path):
-        """Speichert Session in Datei"""
+        """Speichert Session in Datei (inkl. KI-Profile)"""
         try:
             session = self._test_data_form.get_session()
             if not session:
@@ -649,6 +769,13 @@ class MainWindow(QMainWindow):
             
             # Session-Notizen aktualisieren
             session.session_notes = self._test_data_form._session_notes.toPlainText()
+            
+            # KI-Profile speichern (falls vorhanden)
+            if hasattr(self, '_current_ocean_scores') and self._current_ocean_scores is not None:
+                session.ideal_profile = self._current_ocean_scores.ideal_profile
+                session.owner_profile = self._current_ocean_scores.owner_profile
+            
+            # AI-Assessment wird nicht persistent gespeichert, da es bei Bedarf neu generiert wird
             
             session.save_to_file(str(filepath))
             
@@ -873,6 +1000,9 @@ class MainWindow(QMainWindow):
                 f"N={scores.neuroticism_count} Tests"
             )
             self.statusBar().showMessage(status_msg, 5000)
+            
+            # Button-Status aktualisieren
+            self._update_assessment_button_state()
         except Exception as e:
             import traceback
             error_msg = f"Fehler beim Erstellen des Radardiagramms:\n\n{str(e)}\n\n{traceback.format_exc()}"
@@ -910,6 +1040,308 @@ class MainWindow(QMainWindow):
         
         # Bestätigung
         self.statusBar().showMessage("Fragebogen-Profil übernommen und Diagramm aktualisiert", 3000)
+        
+        # Button-Status aktualisieren
+        self._update_assessment_button_state()
+    
+    def _load_ideal_profile(self):
+        """Lädt KI-generiertes Idealprofil"""
+        # Prüfen ob OCEAN-Analyse existiert
+        if not hasattr(self, '_current_ocean_scores') or self._current_ocean_scores is None:
+            QMessageBox.warning(
+                self,
+                "Keine Analyse",
+                "Bitte erstellen Sie zuerst eine OCEAN-Analyse, bevor Sie ein Idealprofil laden."
+            )
+            return
+        
+        # Prüfen ob Stammdaten vorhanden
+        if not self._current_session or not self._current_session.dog_data:
+            QMessageBox.warning(
+                self,
+                "Keine Stammdaten",
+                "Bitte geben Sie zuerst Stammdaten ein."
+            )
+            return
+        
+        # Prüfen ob API konfiguriert ist
+        if not settings.is_openai_configured:
+            QMessageBox.warning(
+                self,
+                "API nicht konfiguriert",
+                "OpenAI API ist nicht konfiguriert.\n\n"
+                "Bitte erstellen Sie eine .env Datei mit Ihrem API-Key.\n"
+                "Siehe docs/api_setup.md für eine Anleitung."
+            )
+            return
+        
+        # Loading-Dialog erstellen
+        from PySide6.QtWidgets import QProgressDialog
+        progress = QProgressDialog(
+            "Generiere KI-Idealprofil...\nBitte warten Sie einen Moment.",
+            "",  # Kein Cancel-Button
+            0, 0,  # Indeterminate progress
+            self
+        )
+        progress.setWindowTitle("KI-Analyse läuft")
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setMinimumDuration(0)  # Sofort anzeigen
+        progress.setValue(0)
+        
+        # Event-Loop verarbeiten
+        from PySide6.QtCore import QCoreApplication
+        QCoreApplication.processEvents()
+        
+        try:
+            # AI Service initialisieren
+            ai_service = AIProfileService()
+            
+            # Hundedaten extrahieren
+            dog_data = self._current_session.dog_data
+            test_count = len(self._current_battery.tests) if self._current_battery else 7
+            
+            # API-Call durchführen
+            ideal_profile = ai_service.get_ideal_profile(
+                breed=dog_data.breed,
+                age_years=dog_data.age_years,
+                age_months=dog_data.age_months,
+                gender=dog_data.gender.value,
+                intended_use=dog_data.intended_use,
+                test_count=test_count
+            )
+            
+            # Profil speichern
+            self._current_ocean_scores.ideal_profile = ideal_profile
+            
+            # Radardiagramm aktualisieren
+            self._show_ocean_plot()
+            
+            # Button-Status aktualisieren
+            self._update_assessment_button_state()
+            
+            # Erfolg-Nachricht
+            profile_str = ", ".join([f"{k}={v}" for k, v in ideal_profile.items()])
+            self.statusBar().showMessage(
+                f"KI-Idealprofil geladen: {profile_str}",
+                5000
+            )
+            
+            QMessageBox.information(
+                self,
+                "Idealprofil geladen",
+                f"Das KI-generierte Idealprofil wurde erfolgreich geladen:\n\n"
+                f"Offenheit (O): {ideal_profile['O']}\n"
+                f"Gewissenhaftigkeit (C): {ideal_profile['C']}\n"
+                f"Extraversion (E): {ideal_profile['E']}\n"
+                f"Verträglichkeit (A): {ideal_profile['A']}\n"
+                f"Neurotizismus (N): {ideal_profile['N']}\n\n"
+                f"Das grün-gestrichelte Profil ist nun im Radardiagramm sichtbar."
+            )
+            
+        except AIProfileConfigError as e:
+            QMessageBox.critical(
+                self,
+                "Konfigurationsfehler",
+                f"Fehler bei der API-Konfiguration:\n\n{str(e)}\n\n"
+                f"Bitte überprüfen Sie Ihre .env Datei."
+            )
+        except AIProfileConnectionError as e:
+            QMessageBox.critical(
+                self,
+                "Verbindungsfehler",
+                f"Fehler beim Verbinden zur OpenAI API:\n\n{str(e)}\n\n"
+                f"Bitte überprüfen Sie Ihre Internetverbindung und API-Key."
+            )
+        except AIProfileError as e:
+            QMessageBox.critical(
+                self,
+                "KI-Fehler",
+                f"Fehler bei der KI-Analyse:\n\n{str(e)}"
+            )
+        except Exception as e:
+            import traceback
+            QMessageBox.critical(
+                self,
+                "Unerwarteter Fehler",
+                f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}\n\n{traceback.format_exc()}"
+            )
+        finally:
+            progress.close()
+    
+    def _show_assessment(self):
+        """Zeigt KI-Bewertung basierend auf allen 3 Profilen"""
+        # Prüfen ob alle Profile vorhanden
+        if not hasattr(self, '_current_ocean_scores') or self._current_ocean_scores is None:
+            QMessageBox.warning(
+                self,
+                "Keine Analyse",
+                "Bitte erstellen Sie zuerst eine OCEAN-Analyse."
+            )
+            return
+        
+        scores = self._current_ocean_scores
+        if not scores.ideal_profile or not scores.owner_profile:
+            QMessageBox.warning(
+                self,
+                "Profile fehlen",
+                "Bitte laden Sie zuerst ein KI-Idealprofil und übernehmen Sie das Fragebogen-Profil."
+            )
+            return
+        
+        # Prüfen ob Stammdaten vorhanden
+        if not self._current_session or not self._current_session.dog_data:
+            QMessageBox.warning(
+                self,
+                "Keine Stammdaten",
+                "Stammdaten fehlen."
+            )
+            return
+        
+        # Loading-Dialog
+        from PySide6.QtWidgets import QProgressDialog
+        progress = QProgressDialog(
+            "Erstelle KI-Bewertung...\nBitte warten Sie einen Moment.",
+            "",
+            0, 0,
+            self
+        )
+        progress.setWindowTitle("KI-Analyse läuft")
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+        
+        from PySide6.QtCore import QCoreApplication
+        QCoreApplication.processEvents()
+        
+        try:
+            # AI Service initialisieren
+            ai_service = AIProfileService()
+            
+            # Ist-Profil extrahieren
+            ist_profile = {
+                'O': scores.openness,
+                'C': scores.conscientiousness,
+                'E': scores.extraversion,
+                'A': scores.agreeableness,
+                'N': scores.neuroticism
+            }
+            
+            # API-Call durchführen
+            test_count = len(self._current_battery.tests) if self._current_battery else 7
+            assessment_text = ai_service.get_assessment(
+                dog_data=self._current_session.dog_data,
+                ist_profile=ist_profile,
+                ideal_profile=scores.ideal_profile,
+                owner_profile=scores.owner_profile,
+                test_count=test_count
+            )
+            
+            # Dialog mit Bewertung anzeigen
+            self._show_assessment_dialog(assessment_text)
+            
+            self.statusBar().showMessage("KI-Bewertung angezeigt", 3000)
+            
+        except AIProfileConfigError as e:
+            QMessageBox.critical(
+                self,
+                "Konfigurationsfehler",
+                f"Fehler bei der API-Konfiguration:\n\n{str(e)}"
+            )
+        except AIProfileConnectionError as e:
+            QMessageBox.critical(
+                self,
+                "Verbindungsfehler",
+                f"Fehler beim Verbinden zur OpenAI API:\n\n{str(e)}"
+            )
+        except AIProfileError as e:
+            QMessageBox.critical(
+                self,
+                "KI-Fehler",
+                f"Fehler bei der KI-Analyse:\n\n{str(e)}"
+            )
+        except Exception as e:
+            import traceback
+            QMessageBox.critical(
+                self,
+                "Unerwarteter Fehler",
+                f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}\n\n{traceback.format_exc()}"
+            )
+        finally:
+            progress.close()
+    
+    def _show_assessment_dialog(self, assessment_text: str):
+        """Zeigt Bewertungstext in einem Dialog"""
+        from PySide6.QtWidgets import QDialog, QTextEdit, QVBoxLayout, QPushButton
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("KI-Bewertung")
+        dialog.setMinimumSize(600, 400)
+        
+        layout = QVBoxLayout()
+        
+        # Text-Widget
+        text_edit = QTextEdit()
+        text_edit.setReadOnly(True)
+        text_edit.setPlainText(assessment_text)
+        text_edit.setStyleSheet("""
+            QTextEdit {
+                font-size: 13px;
+                line-height: 1.5;
+                padding: 10px;
+            }
+        """)
+        layout.addWidget(text_edit)
+        
+        # Schließen-Button
+        close_btn = QPushButton("Schließen")
+        close_btn.setMinimumHeight(35)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px 20px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+        """)
+        close_btn.clicked.connect(dialog.close)
+        layout.addWidget(close_btn)
+        
+        dialog.setLayout(layout)
+        dialog.exec()
+    
+    def _update_assessment_button_state(self):
+        """Aktualisiert Enable/Disable-Status des Bewertungs-Buttons"""
+        if not hasattr(self, '_show_assessment_btn'):
+            return
+        
+        # Button nur aktivieren wenn alle 3 Profile vorhanden
+        has_all_profiles = (
+            hasattr(self, '_current_ocean_scores') and
+            self._current_ocean_scores is not None and
+            self._current_ocean_scores.ideal_profile is not None and
+            self._current_ocean_scores.owner_profile is not None and
+            settings.is_openai_configured
+        )
+        
+        self._show_assessment_btn.setEnabled(has_all_profiles)
+        
+        if has_all_profiles:
+            self._show_assessment_btn.setToolTip(
+                "Erstellt eine KI-basierte Bewertung anhand aller 3 Profile"
+            )
+        elif not settings.is_openai_configured:
+            self._show_assessment_btn.setToolTip(
+                "OpenAI API nicht konfiguriert. Bitte .env Datei erstellen."
+            )
+        else:
+            self._show_assessment_btn.setToolTip(
+                "Bitte laden Sie zuerst ein Idealprofil und übernehmen Sie das Fragebogen-Profil."
+            )
     
     def _show_statistics(self):
         """Zeigt Statistik"""
