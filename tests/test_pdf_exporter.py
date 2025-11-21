@@ -284,3 +284,173 @@ class TestPdfExporter:
         assert "1" in text  # Test-Nummer
         assert "2" in text  # Test-Nummer
         assert "0" in text  # Score
+
+
+class TestPdfExporterWithProfiles:
+    """Tests für PDF-Export mit OCEAN-Profilen"""
+    
+    def test_export_with_ocean_profiles(self, tmp_path):
+        """Test: Export mit ideal_profile und owner_profile erstellt OCEAN-Sektion"""
+        dog_data = DogData(
+            owner_name="Anna Schmidt",
+            dog_name="Luna",
+            age_years=2,
+            age_months=0,
+            gender=Gender.FEMALE,
+            neutered=True
+        )
+        
+        session = TestSession(dog_data=dog_data, battery_name="OCEAN Battery")
+        
+        # OCEAN-Profile setzen
+        session.ideal_profile = {
+            "O": 10, "C": 8, "E": 12, "A": 14, "N": -6
+        }
+        session.owner_profile = {
+            "O": 8, "C": 10, "E": 10, "A": 12, "N": -4
+        }
+        
+        exporter = PdfExporter()
+        filepath = tmp_path / "export_profiles.pdf"
+        
+        exporter.export_to_pdf(session, str(filepath))
+        
+        assert filepath.exists()
+        
+        # PDF-Inhalt prüfen
+        reader = PdfReader(str(filepath))
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text()
+        
+        # Überschrift und Dimensionen prüfen
+        assert "OCEAN-Persönlichkeitsanalyse" in text
+        assert "Offenheit" in text
+        assert "Gewissenhaftigkeit" in text
+        assert "Extraversion" in text
+        assert "Verträglichkeit" in text
+        assert "Neurotizismus" in text
+        
+        # Profile-Spalten prüfen
+        assert "Ist-Profil" in text
+        assert "Fragebogen-Profil" in text
+        assert "Ideal-Profil" in text
+        
+        # Beispiel-Werte prüfen (als String im PDF)
+        assert "10" in text  # ideal_profile O
+        assert "14" in text  # ideal_profile A
+    
+    def test_export_with_ai_assessment(self, tmp_path):
+        """Test: Export mit ai_assessment erstellt KI-Bewertung Sektion"""
+        dog_data = DogData(
+            owner_name="Peter Müller",
+            dog_name="Rex",
+            age_years=5,
+            age_months=3,
+            gender=Gender.MALE,
+            neutered=False
+        )
+        
+        session = TestSession(dog_data=dog_data, battery_name="Test Battery")
+        session.ai_assessment = (
+            "Rex zeigt ein ausgeglichenes OCEAN-Profil mit hoher Verträglichkeit "
+            "und mittlerer Extraversion. Empfehlung: Mehr Sozialkontakte fördern."
+        )
+        
+        exporter = PdfExporter()
+        filepath = tmp_path / "export_assessment.pdf"
+        
+        exporter.export_to_pdf(session, str(filepath))
+        
+        assert filepath.exists()
+        
+        # PDF-Inhalt prüfen
+        reader = PdfReader(str(filepath))
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text()
+        
+        # Überschrift und Assessment-Text prüfen
+        assert "KI-gestützte Bewertung" in text
+        assert "Rex zeigt ein ausgeglichenes OCEAN-Profil" in text
+        assert "Mehr Sozialkontakte fördern" in text
+        assert "GPT-4o-mini" in text  # Info-Text
+    
+    def test_export_without_profiles(self, tmp_path):
+        """Test: Export ohne Profile erstellt keine zusätzlichen Sektionen"""
+        dog_data = DogData(
+            owner_name="Lisa Wagner",
+            dog_name="Bella",
+            age_years=1,
+            age_months=6,
+            gender=Gender.FEMALE,
+            neutered=True
+        )
+        
+        session = TestSession(dog_data=dog_data, battery_name="Basic Battery")
+        session.add_result(TestResult(test_number=1, score=1, notes=""))
+        # Keine Profile, keine AI-Bewertung
+        
+        exporter = PdfExporter()
+        filepath = tmp_path / "export_basic.pdf"
+        
+        exporter.export_to_pdf(session, str(filepath))
+        
+        assert filepath.exists()
+        
+        # PDF-Inhalt prüfen
+        reader = PdfReader(str(filepath))
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text()
+        
+        # Basis-Sektionen sollten vorhanden sein
+        assert "Stammdaten" in text
+        assert "Testergebnisse" in text
+        
+        # Profil-Sektionen sollten NICHT vorhanden sein
+        assert "OCEAN-Persönlichkeitsanalyse" not in text
+        assert "KI-gestützte Bewertung" not in text
+    
+    def test_export_with_battery_calculates_ist_profile(self, tmp_path, sample_battery):
+        """Test: Export mit TestBattery berechnet Ist-Profil dynamisch"""
+        dog_data = DogData(
+            owner_name="Tom Fischer",
+            dog_name="Max",
+            age_years=4,
+            age_months=2,
+            gender=Gender.MALE,
+            neutered=True
+        )
+        
+        session = TestSession(dog_data=dog_data, battery_name="OCEAN Battery")
+        
+        # Testergebnisse für Tests in battery
+        session.add_result(TestResult(test_number=1, score=2, notes=""))  # Openness
+        session.add_result(TestResult(test_number=2, score=-1, notes=""))  # Agreeableness
+        
+        # Ideal-Profil setzen
+        session.ideal_profile = {
+            "O": 10, "C": 5, "E": 8, "A": 12, "N": -3
+        }
+        
+        exporter = PdfExporter(sample_battery)
+        filepath = tmp_path / "export_ist_profile.pdf"
+        
+        exporter.export_to_pdf(session, str(filepath))
+        
+        assert filepath.exists()
+        
+        # PDF-Inhalt prüfen
+        reader = PdfReader(str(filepath))
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text()
+        
+        # OCEAN-Analyse sollte vorhanden sein
+        assert "OCEAN-Persönlichkeitsanalyse" in text
+        assert "Ist-Profil" in text
+        
+        # Scores sollten im PDF sein (2 und -1 aus Testresultaten)
+        assert "2" in text
+        assert "-1" in text or "−1" in text  # PDF kann minus-Zeichen anders darstellen

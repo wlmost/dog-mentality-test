@@ -92,6 +92,16 @@ class PdfExporter:
             # Testergebnisse
             story.extend(self._create_results_section(session, styles))
             
+            # OCEAN-Profile (conditional)
+            if session.ideal_profile or session.owner_profile or (self._battery and session.results):
+                story.append(Spacer(1, 1*cm))
+                story.extend(self._create_ocean_profiles_section(session, styles))
+            
+            # KI-Assessment (conditional)
+            if session.ai_assessment:
+                story.append(Spacer(1, 1*cm))
+                story.extend(self._create_ai_assessment_section(session, styles))
+            
             # Session-Notizen
             if session.session_notes:
                 story.append(Spacer(1, 1*cm))
@@ -244,5 +254,129 @@ class PdfExporter:
             spaceAfter=10
         )
         elements.append(Paragraph(session.session_notes, notes_style))
+        
+        return elements
+    
+    def _create_ocean_profiles_section(self, session: TestSession, styles):
+        """Erstellt OCEAN-Profile-Sektion mit Vergleichstabelle"""
+        from src.ocean_analyzer import OceanAnalyzer
+        
+        elements = []
+        
+        # Überschrift
+        heading_style = ParagraphStyle(
+            'SectionHeading',
+            parent=styles['Heading2'],
+            fontSize=16,
+            textColor=colors.HexColor('#34495E'),
+            spaceAfter=15
+        )
+        elements.append(Paragraph("OCEAN-Persönlichkeitsanalyse", heading_style))
+        
+        # OCEAN-Scores berechnen (Ist-Profil)
+        ocean_scores = None
+        if self._battery and session.results:
+            analyzer = OceanAnalyzer(session, self._battery)
+            ocean_scores = analyzer.calculate_ocean_scores()
+        
+        # Tabellen-Header
+        data = [['Dimension', 'Ist-Profil', 'Fragebogen-Profil', 'Ideal-Profil']]
+        
+        # Dimensionen
+        dimensions = [
+            ("Offenheit (O)", "O", "openness"),
+            ("Gewissenhaftigkeit (C)", "C", "conscientiousness"),
+            ("Extraversion (E)", "E", "extraversion"),
+            ("Verträglichkeit (A)", "A", "agreeableness"),
+            ("Neurotizismus (N)", "N", "neuroticism")
+        ]
+        
+        for dim_name, dim_key, dim_attr in dimensions:
+            row = [dim_name]
+            
+            # Ist-Profil (berechnet)
+            if ocean_scores:
+                ist_value = getattr(ocean_scores, dim_attr, 0)
+                row.append(str(ist_value))
+            else:
+                row.append("—")
+            
+            # Fragebogen-Profil (owner_profile)
+            if session.owner_profile and dim_key in session.owner_profile:
+                row.append(str(session.owner_profile[dim_key]))
+            else:
+                row.append("—")
+            
+            # Ideal-Profil (AI-generated)
+            if session.ideal_profile and dim_key in session.ideal_profile:
+                row.append(str(session.ideal_profile[dim_key]))
+            else:
+                row.append("—")
+            
+            data.append(row)
+        
+        # Tabelle erstellen
+        table = Table(data, colWidths=[5*cm, 3*cm, 4*cm, 3*cm])
+        table.setStyle(TableStyle([
+            # Header-Style
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2C3E50')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            # Data-Style
+            ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),  # Dimension bold
+            ('FONTNAME', (1, 1), (-1, -1), 'Helvetica'),
+            ('ALIGN', (1, 1), (-1, -1), 'CENTER'),  # Profile-Werte zentriert
+            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
+            ('TOPPADDING', (0, 1), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8F9FA')]),
+        ]))
+        
+        elements.append(table)
+        
+        return elements
+    
+    def _create_ai_assessment_section(self, session: TestSession, styles):
+        """Erstellt KI-Assessment-Sektion"""
+        elements = []
+        
+        # Überschrift
+        heading_style = ParagraphStyle(
+            'SectionHeading',
+            parent=styles['Heading2'],
+            fontSize=16,
+            textColor=colors.HexColor('#34495E'),
+            spaceAfter=15
+        )
+        elements.append(Paragraph("KI-gestützte Bewertung", heading_style))
+        
+        # Info-Text
+        info_style = ParagraphStyle(
+            'Info',
+            parent=styles['BodyText'],
+            fontSize=9,
+            textColor=colors.grey,
+            spaceAfter=10
+        )
+        elements.append(Paragraph(
+            "Diese Bewertung wurde automatisch durch GPT-4o-mini erstellt und basiert auf den OCEAN-Profilen.",
+            info_style
+        ))
+        
+        # Assessment-Text
+        assessment_style = ParagraphStyle(
+            'Assessment',
+            parent=styles['BodyText'],
+            fontSize=10,
+            alignment=TA_LEFT,
+            spaceAfter=10,
+            leftIndent=1*cm,
+            rightIndent=1*cm
+        )
+        elements.append(Paragraph(session.ai_assessment or "", assessment_style))
         
         return elements

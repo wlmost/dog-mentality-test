@@ -288,3 +288,167 @@ class TestExcelExporter:
         assert ws.cell(row=4, column=4).value == 0
         assert ws.cell(row=5, column=1).value == 2
         assert ws.cell(row=5, column=4).value == 0
+
+
+class TestExcelExporterWithProfiles:
+    """Tests für Excel-Export mit OCEAN-Profilen"""
+    
+    def test_export_with_ocean_profiles(self, tmp_path):
+        """Test: Export mit ideal_profile und owner_profile erstellt OCEAN-Analyse Sheet"""
+        dog_data = DogData(
+            owner_name="Anna Schmidt",
+            dog_name="Luna",
+            age_years=2,
+            age_months=0,
+            gender=Gender.FEMALE,
+            neutered=True
+        )
+        
+        session = TestSession(dog_data=dog_data, battery_name="OCEAN Battery")
+        
+        # OCEAN-Profile setzen
+        session.ideal_profile = {
+            "O": 10, "C": 8, "E": 12, "A": 14, "N": -6
+        }
+        session.owner_profile = {
+            "O": 8, "C": 10, "E": 10, "A": 12, "N": -4
+        }
+        
+        exporter = ExcelExporter()
+        filepath = tmp_path / "export_profiles.xlsx"
+        
+        exporter.export_to_excel(session, str(filepath))
+        
+        # Excel-Datei laden und OCEAN-Analyse Sheet prüfen
+        wb = load_workbook(str(filepath))
+        assert "OCEAN-Analyse" in wb.sheetnames
+        
+        ws = wb["OCEAN-Analyse"]
+        
+        # Titel prüfen
+        assert ws.cell(row=1, column=1).value == "OCEAN-Persönlichkeitsanalyse"
+        
+        # Header prüfen (Row 3)
+        assert ws.cell(row=3, column=1).value == "Dimension"
+        assert ws.cell(row=3, column=2).value == "Ist-Profil"
+        assert ws.cell(row=3, column=3).value == "Fragebogen-Profil"
+        assert ws.cell(row=3, column=4).value == "Ideal-Profil"
+        
+        # Dimensionen prüfen (Row 4-8)
+        dimensions = ["Offenheit (O)", "Gewissenhaftigkeit (C)", "Extraversion (E)", "Verträglichkeit (A)", "Neurotizismus (N)"]
+        for i, dim in enumerate(dimensions, start=4):
+            assert ws.cell(row=i, column=1).value == dim
+        
+        # Profile-Werte prüfen (Row 4 = Offenheit)
+        assert ws.cell(row=4, column=3).value == 8  # owner_profile O
+        assert ws.cell(row=4, column=4).value == 10  # ideal_profile O
+        
+        # Row 7 = Verträglichkeit
+        assert ws.cell(row=7, column=3).value == 12  # owner_profile A
+        assert ws.cell(row=7, column=4).value == 14  # ideal_profile A
+    
+    def test_export_with_ai_assessment(self, tmp_path):
+        """Test: Export mit ai_assessment erstellt KI-Bewertung Sheet"""
+        dog_data = DogData(
+            owner_name="Peter Müller",
+            dog_name="Rex",
+            age_years=5,
+            age_months=3,
+            gender=Gender.MALE,
+            neutered=False
+        )
+        
+        session = TestSession(dog_data=dog_data, battery_name="Test Battery")
+        session.ai_assessment = (
+            "Rex zeigt ein ausgeglichenes OCEAN-Profil mit hoher Verträglichkeit "
+            "und mittlerer Extraversion. Empfehlung: Mehr Sozialkontakte fördern."
+        )
+        
+        exporter = ExcelExporter()
+        filepath = tmp_path / "export_assessment.xlsx"
+        
+        exporter.export_to_excel(session, str(filepath))
+        
+        # Excel-Datei laden und KI-Bewertung Sheet prüfen
+        wb = load_workbook(str(filepath))
+        assert "KI-Bewertung" in wb.sheetnames
+        
+        ws = wb["KI-Bewertung"]
+        
+        # Titel prüfen
+        assert ws.cell(row=1, column=1).value == "KI-Bewertung"
+        
+        # Assessment-Text prüfen (in merged cell ab A5)
+        assessment_text = str(ws.cell(row=5, column=1).value)
+        assert "Rex zeigt ein ausgeglichenes OCEAN-Profil" in assessment_text
+        assert "Mehr Sozialkontakte fördern" in assessment_text
+    
+    def test_export_without_profiles(self, tmp_path):
+        """Test: Export ohne Profile erstellt nur 2 Basis-Sheets"""
+        dog_data = DogData(
+            owner_name="Lisa Wagner",
+            dog_name="Bella",
+            age_years=1,
+            age_months=6,
+            gender=Gender.FEMALE,
+            neutered=True
+        )
+        
+        session = TestSession(dog_data=dog_data, battery_name="Basic Battery")
+        # Keine Profile, keine AI-Bewertung
+        
+        exporter = ExcelExporter()
+        filepath = tmp_path / "export_basic.xlsx"
+        
+        exporter.export_to_excel(session, str(filepath))
+        
+        # Excel-Datei laden
+        wb = load_workbook(str(filepath))
+        
+        # Nur Basis-Sheets vorhanden
+        assert "Stammdaten" in wb.sheetnames
+        assert "Testergebnisse" in wb.sheetnames
+        assert "OCEAN-Analyse" not in wb.sheetnames
+        assert "KI-Bewertung" not in wb.sheetnames
+    
+    def test_export_with_battery_calculates_ist_profile(self, tmp_path, sample_battery):
+        """Test: Export mit TestBattery berechnet Ist-Profil dynamisch"""
+        dog_data = DogData(
+            owner_name="Tom Fischer",
+            dog_name="Max",
+            age_years=4,
+            age_months=2,
+            gender=Gender.MALE,
+            neutered=True
+        )
+        
+        session = TestSession(dog_data=dog_data, battery_name="OCEAN Battery")
+        
+        # Testergebnisse für alle 3 Tests in battery
+        session.add_result(TestResult(test_number=1, score=2, notes=""))  # Openness
+        session.add_result(TestResult(test_number=2, score=-1, notes=""))  # Agreeableness
+        session.add_result(TestResult(test_number=5, score=1, notes=""))  # Extraversion
+        
+        # Ideal-Profil setzen
+        session.ideal_profile = {
+            "O": 10, "C": 5, "E": 8, "A": 12, "N": -3
+        }
+        
+        exporter = ExcelExporter(sample_battery)
+        filepath = tmp_path / "export_ist_profile.xlsx"
+        
+        exporter.export_to_excel(session, str(filepath))
+        
+        # Excel-Datei laden
+        wb = load_workbook(str(filepath))
+        ws = wb["OCEAN-Analyse"]
+        
+        # Ist-Profil prüfen (Spalte B, Rows 4-8)
+        # Row 4 = Offenheit (Test 1, score=2)
+        assert ws.cell(row=4, column=2).value == 2
+        
+        # Row 7 = Verträglichkeit (Test 2, score=-1)
+        assert ws.cell(row=7, column=2).value == -1
+        
+        # Row 6 = Extraversion (Test 5, score=1)
+        assert ws.cell(row=6, column=2).value == 1

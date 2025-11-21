@@ -227,18 +227,15 @@ class MainWindow(QMainWindow):
         title.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;")
         layout.addWidget(title)
         
-        # Info-Text
-        info = QLabel(
-            "Hier wird das OCEAN-Radardiagramm angezeigt.\n\n"
-            "Klicken Sie auf den Button 'Radardiagramm erstellen' um die Visualisierung zu erstellen."
-        )
-        info.setStyleSheet("color: #7f8c8d; font-size: 13px; margin: 20px 0;")
-        info.setWordWrap(True)
-        layout.addWidget(info)
+        layout.addSpacing(10)
         
-        # Halter-Profil Eingabemaske
+        # Splitter für Eingabebereich (oben) und Chart-Bereich (unten)
+        from PySide6.QtWidgets import QSplitter
+        splitter = QSplitter(Qt.Orientation.Vertical)
+        
+        # Halter-Profil Eingabemaske (oberer Bereich)
         owner_group = self._create_owner_profile_input()
-        layout.addWidget(owner_group)
+        splitter.addWidget(owner_group)
         
         # Platzhalter für Plot (wird durch OceanRadarChart ersetzt)
         self._plot_placeholder = QLabel("📊 OCEAN Radardiagramm")
@@ -253,7 +250,7 @@ class MainWindow(QMainWindow):
             color: #95a5a6;
         """)
         
-        # Container für Chart mit ScrollArea für große Diagramme
+        # Container für Chart mit ScrollArea für große Diagramme (unterer Bereich)
         self._chart_container = QWidget()
         chart_layout = QVBoxLayout(self._chart_container)
         chart_layout.setContentsMargins(0, 0, 0, 0)
@@ -266,7 +263,19 @@ class MainWindow(QMainWindow):
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         
-        layout.addWidget(scroll_area, stretch=1)
+        splitter.addWidget(scroll_area)
+        
+        # Größenverhältnis: 30% Eingabe, 70% Chart
+        splitter.setStretchFactor(0, 3)  # owner_group
+        splitter.setStretchFactor(1, 7)  # scroll_area (Chart)
+        
+        # Minimale Größen setzen (Chart soll nicht zu klein werden)
+        scroll_area.setMinimumHeight(300)
+        
+        # Splitter-Handle sichtbarer machen
+        splitter.setHandleWidth(6)
+        
+        layout.addWidget(splitter, stretch=1)
         
         # Button-Leiste
         button_layout = QHBoxLayout()
@@ -312,7 +321,7 @@ class MainWindow(QMainWindow):
         return scroll
     
     def _create_owner_profile_input(self) -> QGroupBox:
-        """Erstellt die Eingabemaske für das Fragebogen-Profil"""
+        """Erstellt die Eingabemaske für das Fragebogen-Profil (2-spaltig)"""
         group = QGroupBox("Fragebogen-Profil (Ergebnis des Fragebogens)")
         group.setStyleSheet("""
             QGroupBox {
@@ -330,96 +339,108 @@ class MainWindow(QMainWindow):
             }
         """)
         
-        layout = QFormLayout()
-        layout.setSpacing(10)
-        layout.setContentsMargins(20, 20, 20, 20)
+        # Hauptlayout: 2 Spalten (Links Formular, Rechts Buttons)
+        main_layout = QHBoxLayout()
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(20)
         
-        # Info-Text
-        info = QLabel(
-            "Tragen Sie hier die OCEAN-Werte aus dem Fragebogen ein.\n"
-            "Wertebereich: -14 bis +14 (abhängig von der Testbatterie)"
-        )
-        info.setStyleSheet("color: #7f8c8d; font-size: 12px;")
-        info.setWordWrap(True)
-        layout.addRow(info)
+        # ===== LINKE SPALTE: Formular =====
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setSpacing(8)
+        left_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Eingabefelder für OCEAN-Dimensionen
+        # Formular für OCEAN-Dimensionen
         from PySide6.QtWidgets import QSpinBox
+        form_layout = QFormLayout()
+        form_layout.setSpacing(8)
+        form_layout.setContentsMargins(0, 0, 0, 0)
         
         self._owner_o_input = QSpinBox()
         self._owner_o_input.setRange(-14, 14)
         self._owner_o_input.setValue(0)
-        self._owner_o_input.setMinimumHeight(30)
-        layout.addRow("Offenheit (O):", self._owner_o_input)
+        self._owner_o_input.setMinimumHeight(28)
+        form_layout.addRow("Offenheit (O):", self._owner_o_input)
         
         self._owner_c_input = QSpinBox()
         self._owner_c_input.setRange(-14, 14)
         self._owner_c_input.setValue(0)
-        self._owner_c_input.setMinimumHeight(30)
-        layout.addRow("Gewissenhaftigkeit (C):", self._owner_c_input)
+        self._owner_c_input.setMinimumHeight(28)
+        form_layout.addRow("Gewissenhaftigkeit (C):", self._owner_c_input)
         
         self._owner_e_input = QSpinBox()
         self._owner_e_input.setRange(-14, 14)
         self._owner_e_input.setValue(0)
-        self._owner_e_input.setMinimumHeight(30)
-        layout.addRow("Extraversion (E):", self._owner_e_input)
+        self._owner_e_input.setMinimumHeight(28)
+        form_layout.addRow("Extraversion (E):", self._owner_e_input)
         
         self._owner_a_input = QSpinBox()
         self._owner_a_input.setRange(-14, 14)
         self._owner_a_input.setValue(0)
-        self._owner_a_input.setMinimumHeight(30)
-        layout.addRow("Verträglichkeit (A):", self._owner_a_input)
+        self._owner_a_input.setMinimumHeight(28)
+        form_layout.addRow("Verträglichkeit (A):", self._owner_a_input)
         
         self._owner_n_input = QSpinBox()
         self._owner_n_input.setRange(-14, 14)
         self._owner_n_input.setValue(0)
-        self._owner_n_input.setMinimumHeight(30)
-        layout.addRow("Neurotizismus (N):", self._owner_n_input)
+        self._owner_n_input.setMinimumHeight(28)
+        form_layout.addRow("Neurotizismus (N):", self._owner_n_input)
+        
+        left_layout.addLayout(form_layout)
         
         # Button zum Übernehmen
         apply_btn = QPushButton("Fragebogen-Profil übernehmen")
-        apply_btn.setMinimumHeight(35)
+        apply_btn.setMinimumHeight(32)
         apply_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
                 border: none;
                 border-radius: 4px;
-                padding: 5px 20px;
+                padding: 5px 15px;
                 font-weight: bold;
+                font-size: 12px;
             }
             QPushButton:hover {
                 background-color: #2980b9;
             }
         """)
         apply_btn.clicked.connect(self._apply_owner_profile)
-        layout.addRow(apply_btn)
+        left_layout.addWidget(apply_btn)
+        left_layout.addStretch()
         
-        # Separator
-        separator = QLabel()
-        separator.setFixedHeight(1)
-        separator.setStyleSheet("background-color: #bdc3c7; margin: 10px 0;")
-        layout.addRow(separator)
+        main_layout.addWidget(left_widget, stretch=1)
+        
+        # ===== RECHTE SPALTE: KI-Buttons =====
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setSpacing(10)
+        right_layout.setContentsMargins(0, 0, 0, 0)
         
         # KI-Features Info
-        ki_info = QLabel(
-            "KI-gestützte Features (benötigt OpenAI API-Key in .env)"
-        )
-        ki_info.setStyleSheet("color: #7f8c8d; font-size: 12px; font-style: italic;")
-        ki_info.setWordWrap(True)
-        layout.addRow(ki_info)
+        ki_info = QLabel("KI-gestützte Features")
+        ki_info.setStyleSheet("color: #2c3e50; font-size: 12px; font-weight: bold;")
+        right_layout.addWidget(ki_info)
+        
+        ki_subinfo = QLabel("(benötigt OpenAI API-Key)")
+        ki_subinfo.setStyleSheet("color: #7f8c8d; font-size: 10px; font-style: italic;")
+        right_layout.addWidget(ki_subinfo)
+        
+        right_layout.addSpacing(10)
         
         # KI-Idealprofil Button
-        self._load_ideal_btn = QPushButton("KI-Idealprofil laden")
-        self._load_ideal_btn.setMinimumHeight(35)
+        self._load_ideal_btn = QPushButton("🤖 KI-Idealprofil laden")
+        self._load_ideal_btn.setMinimumHeight(40)
         self._load_ideal_btn.setStyleSheet("""
             QPushButton {
                 background-color: #2ecc71;
                 color: white;
                 border: none;
                 border-radius: 4px;
-                padding: 5px 20px;
+                padding: 8px 15px;
                 font-weight: bold;
+                font-size: 12px;
+                text-align: left;
             }
             QPushButton:hover {
                 background-color: #27ae60;
@@ -430,19 +451,21 @@ class MainWindow(QMainWindow):
             }
         """)
         self._load_ideal_btn.clicked.connect(self._load_ideal_profile)
-        layout.addRow(self._load_ideal_btn)
+        right_layout.addWidget(self._load_ideal_btn)
         
         # KI-Bewertung Button
-        self._show_assessment_btn = QPushButton("KI-Bewertung anzeigen")
-        self._show_assessment_btn.setMinimumHeight(35)
+        self._show_assessment_btn = QPushButton("📊 KI-Bewertung anzeigen")
+        self._show_assessment_btn.setMinimumHeight(40)
         self._show_assessment_btn.setStyleSheet("""
             QPushButton {
                 background-color: #9b59b6;
                 color: white;
                 border: none;
                 border-radius: 4px;
-                padding: 5px 20px;
+                padding: 8px 15px;
                 font-weight: bold;
+                font-size: 12px;
+                text-align: left;
             }
             QPushButton:hover {
                 background-color: #8e44ad;
@@ -454,7 +477,11 @@ class MainWindow(QMainWindow):
         """)
         self._show_assessment_btn.clicked.connect(self._show_assessment)
         self._show_assessment_btn.setEnabled(False)  # Erst aktiv wenn alle 3 Profile da
-        layout.addRow(self._show_assessment_btn)
+        right_layout.addWidget(self._show_assessment_btn)
+        
+        right_layout.addStretch()
+        
+        main_layout.addWidget(right_widget, stretch=1)
         
         # Prüfe ob API konfiguriert ist
         if not settings.is_openai_configured:
@@ -468,7 +495,7 @@ class MainWindow(QMainWindow):
                 "Siehe docs/api_setup.md für Anleitung."
             )
         
-        group.setLayout(layout)
+        group.setLayout(main_layout)
         return group
     
     def _create_menu_bar(self):
