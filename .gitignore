@@ -221,3 +221,9 @@ data/*.db
 # OS
 .DS_Store
 Thumbs.db
+
+# zip files
+*.zip
+
+# xlsx files
+*.xlsx

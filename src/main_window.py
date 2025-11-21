@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QMenuBar, QMenu, QFileDialog, QMessageBox, QLabel, QPushButton,
     QScrollArea, QApplication, QGroupBox, QFormLayout, QSpinBox
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QAction, QKeySequence, QScreen
 from pathlib import Path
 from typing import Optional
@@ -59,6 +59,9 @@ class MainWindow(QMainWindow):
         
         # Statusleiste
         self.statusBar().showMessage("Bereit")
+        
+        # Testbatterie beim Start auswählen
+        QTimer.singleShot(100, self._select_battery_on_startup)
     
     def _setup_window_size(self):
         """
@@ -662,13 +665,8 @@ class MainWindow(QMainWindow):
             # Stammdaten in Formular laden
             self._master_data_form.fill_form(session.dog_data)
             
-            # Testbatterie muss auch geladen werden
-            if not self._current_battery or self._current_battery.name != session.battery_name:
-                QMessageBox.warning(
-                    self,
-                    "Testbatterie fehlt",
-                    f"Die Testbatterie '{session.battery_name}' muss zuerst importiert werden."
-                )
+            # Testbatterie prüfen und ggf. laden
+            if not self._ensure_battery_matches_session(session):
                 return
             
             # Test-Daten laden
@@ -1415,6 +1413,81 @@ Fortschritt:
 <p>© 2025 - Clean Code & TDD</p>
 """
         QMessageBox.about(self, "Über Dog Mentality Test", about_text)
+    
+    def _select_battery_on_startup(self):
+        """Zeigt Battery-Auswahl-Dialog beim Start"""
+        reply = QMessageBox.question(
+            self,
+            "Testbatterie auswählen",
+            "Möchten Sie eine Testbatterie laden?\n\n"
+            "Eine Testbatterie wird benötigt, um Tests durchzuführen.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            self._import_battery()
+    
+    def _ensure_battery_matches_session(self, session: TestSession) -> bool:
+        """
+        Stellt sicher, dass die aktuelle Battery zur Session passt
+        
+        Args:
+            session: Die zu ladende Session
+            
+        Returns:
+            True wenn Battery passt oder neu geladen wurde, False bei Abbruch
+        """
+        # Prüfen ob aktuelle Battery passt
+        if self._current_battery and self._current_battery.name == session.battery_name:
+            return True
+        
+        # Battery passt nicht oder fehlt
+        reply = QMessageBox.question(
+            self,
+            "Testbatterie laden",
+            f"Die Session benötigt die Testbatterie '{session.battery_name}'.\n\n"
+            "Möchten Sie diese Testbatterie jetzt auswählen?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            filename, _ = QFileDialog.getOpenFileName(
+                self,
+                f"Testbatterie '{session.battery_name}' auswählen",
+                "data",
+                "Excel Files (*.xlsx *.xls)"
+            )
+            
+            if not filename:
+                return False
+            
+            try:
+                importer = TestBatteryImporter(filename)
+                battery = importer.import_battery()
+                
+                # Prüfen ob Name übereinstimmt
+                if battery.name != session.battery_name:
+                    QMessageBox.warning(
+                        self,
+                        "Falsche Testbatterie",
+                        f"Die gewählte Batterie '{battery.name}' stimmt nicht mit "
+                        f"der benötigten Batterie '{session.battery_name}' überein."
+                    )
+                    return False
+                
+                self._current_battery = battery
+                self.statusBar().showMessage(f"Testbatterie '{battery.name}' geladen", 3000)
+                return True
+                
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Import-Fehler",
+                    f"Fehler beim Importieren:\n{str(e)}"
+                )
+                return False
+        
+        return False
     
     def closeEvent(self, event):
         """Überschreibt Close-Event für Abfrage bei ungespeicherten Änderungen"""
