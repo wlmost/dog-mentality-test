@@ -25,6 +25,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+*.zip
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -221,9 +222,6 @@ data/*.db
 # OS
 .DS_Store
 Thumbs.db
-
-# zip files
-*.zip
 
 # xlsx files
 *.xlsx
