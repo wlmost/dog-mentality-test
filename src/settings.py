@@ -38,6 +38,9 @@ class Settings:
         self.openai_timeout: int = int(os.getenv('OPENAI_TIMEOUT', '30'))
         self.openai_max_tokens: int = int(os.getenv('OPENAI_MAX_TOKENS', '500'))
         
+        # Letzter Battery-Pfad (für schnelleren Zugriff)
+        self.last_battery_path: Optional[str] = os.getenv('LAST_BATTERY_PATH')
+        
         self._initialized = True
     
     @property
@@ -68,6 +71,56 @@ class Settings:
             'timeout': self.openai_timeout,
             'max_tokens': self.openai_max_tokens
         }
+    
+    def save_last_battery_path(self, path: str):
+        """
+        Speichert letzten Battery-Pfad in .env Datei
+        
+        Args:
+            path: Absoluter Pfad zur Battery-Datei
+        """
+        env_path = Path(__file__).parent.parent / '.env'
+        
+        # Prüfen ob .env existiert, sonst von .env.example kopieren
+        if not env_path.exists():
+            example_path = env_path.parent / '.env.example'
+            if example_path.exists():
+                with open(example_path, 'r', encoding='utf-8') as f:
+                    example_content = f.read()
+                with open(env_path, 'w', encoding='utf-8') as f:
+                    f.write(example_content)
+        
+        # Existierende Zeilen lesen
+        lines = []
+        if env_path.exists():
+            with open(env_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+        
+        # LAST_BATTERY_PATH aktualisieren oder hinzufügen
+        battery_line = f"LAST_BATTERY_PATH={path}\n"
+        found = False
+        
+        for i, line in enumerate(lines):
+            if line.startswith('LAST_BATTERY_PATH='):
+                lines[i] = battery_line
+                found = True
+                break
+        
+        if not found:
+            # Am Ende hinzufügen (nach Leerzeile falls keine vorhanden)
+            if lines and not lines[-1].endswith('\n'):
+                lines[-1] += '\n'
+            if lines and lines[-1].strip():  # Letzte Zeile nicht leer
+                lines.append('\n')
+            lines.append('# Letzter Battery-Pfad (automatisch gespeichert)\n')
+            lines.append(battery_line)
+        
+        # Zurückschreiben
+        with open(env_path, 'w', encoding='utf-8') as f:
+            f.writelines(lines)
+        
+        # Lokale Variable aktualisieren
+        self.last_battery_path = path
 
 
 # Singleton-Instanz

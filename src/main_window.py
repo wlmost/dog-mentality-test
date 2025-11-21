@@ -815,10 +815,19 @@ class MainWindow(QMainWindow):
     
     def _import_battery(self):
         """Importiert eine Testbatterie aus Excel"""
+        # Start-Verzeichnis: Letzter Battery-Pfad oder data/
+        start_dir = "data"
+        if settings.last_battery_path:
+            last_path = Path(settings.last_battery_path)
+            if last_path.exists():
+                start_dir = str(last_path.parent)
+            elif last_path.parent.exists():
+                start_dir = str(last_path.parent)
+        
         filename, _ = QFileDialog.getOpenFileName(
             self,
             "Testbatterie importieren",
-            "data",
+            start_dir,
             "Excel Files (*.xlsx *.xls)"
         )
         
@@ -830,6 +839,9 @@ class MainWindow(QMainWindow):
             battery = importer.import_battery()
             
             self._current_battery = battery
+            
+            # Battery-Pfad speichern
+            settings.save_last_battery_path(str(Path(filename).absolute()))
             
             QMessageBox.information(
                 self,
@@ -1451,10 +1463,19 @@ Fortschritt:
         )
         
         if reply == QMessageBox.StandardButton.Yes:
+            # Start-Verzeichnis: Letzter Battery-Pfad oder data/
+            start_dir = "data"
+            if settings.last_battery_path:
+                last_path = Path(settings.last_battery_path)
+                if last_path.exists():
+                    start_dir = str(last_path.parent)
+                elif last_path.parent.exists():
+                    start_dir = str(last_path.parent)
+            
             filename, _ = QFileDialog.getOpenFileName(
                 self,
                 f"Testbatterie '{session.battery_name}' auswählen",
-                "data",
+                start_dir,
                 "Excel Files (*.xlsx *.xls)"
             )
             
@@ -1476,6 +1497,10 @@ Fortschritt:
                     return False
                 
                 self._current_battery = battery
+                
+                # Battery-Pfad speichern
+                settings.save_last_battery_path(str(Path(filename).absolute()))
+                
                 self.statusBar().showMessage(f"Testbatterie '{battery.name}' geladen", 3000)
                 return True
                 
